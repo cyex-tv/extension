@@ -30,7 +30,7 @@ vi.mock('../src/content/app', () => ({
 vi.mock('../src/ext', () => ({
   ext: () => ({
     storage: { sync: {}, local: {}, onChanged: { addListener: (f: () => void) => void (onChanged = f) } },
-    runtime: {},
+    runtime: { id: 'x', getManifest: () => ({ version: '0' }), onMessage: { addListener: () => {} } },
   }),
 }));
 vi.mock('../src/settings', () => ({ STORAGE_KEY: 'k', load: async () => ({}) }));

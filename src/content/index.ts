@@ -4,7 +4,8 @@ import type { Answer, Request } from '../background/fetcher';
 import { ext } from '../ext';
 import type { FetchJson } from '../providers/types';
 import { NOTES_KEY, notes } from '../features/people/notes';
-import { STORAGE_KEY, load } from '../settings';
+import { startHealth } from '../health/index';
+import { STORAGE_KEY, type Theme, load } from '../settings';
 import { kick } from '../sites/kick';
 import { twitch } from '../sites/twitch';
 import { App } from './app';
@@ -19,6 +20,7 @@ export const fetchJson: FetchJson = async (url, init) => {
 let app: App | null = null;
 
 let generation = 0;
+let theme: Theme = 'dark';
 
 async function start() {
   // Saved twice quickly: only the latest start may finish.
@@ -26,6 +28,7 @@ async function start() {
   const site = location.hostname.endsWith('kick.com') ? kick : twitch;
   const settings = await load(ext().storage.sync);
   if (mine !== generation) return;
+  theme = settings.theme;
   const next = new App({ site, fetch: fetchJson, settings, local: ext().storage.local });
   await Promise.all([next.loadGlobals(), next.loadBadges()]);
   if (mine !== generation) return;
@@ -41,5 +44,6 @@ ext().storage.onChanged.addListener((changes, area) => {
 });
 
 void notes.load(ext().storage.local);
+startHealth(location.hostname.endsWith('kick.com') ? kick : twitch, () => theme);
 
 start().catch((e) => console.warn('[cyex.tv]', e));

@@ -13,6 +13,16 @@ export const COSMETIC_LABEL: Record<keyof Settings['cosmetics'], string> = {
 };
 
 /** `platform:login` for a Twitch or Kick channel address, or null for anything else. */
+/** Whether the address is a page of Twitch or Kick (a channel or not). */
+export function onSupportedSite(url: string | undefined): boolean {
+  try {
+    const host = new URL(url ?? '').hostname;
+    return host === 'www.twitch.tv' || host === 'twitch.tv' || host === 'kick.com';
+  } catch {
+    return false;
+  }
+}
+
 export function channelKey(url: string | undefined): string | null {
   if (!url) return null;
   let parsed: URL;

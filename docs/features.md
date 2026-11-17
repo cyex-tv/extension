@@ -10,6 +10,10 @@ The settings page keeps all of this calm: three sidebar groups like cyex deck's 
 On a fresh install a short welcome page opens (three steps: which emote providers, a starting look with a "Clean Twitch" preset, where settings are), with "Skip, use defaults" on every step. Completion is stored in storage.local; it can be reopened from Settings → About. The extension's own pages follow a Theme setting (dark by default, light, or like the system).
 Chat cosmetics from cyex.tv (badges before the name, name paints on it) come from `api.cyex.tv/v1/cosmetics` and follow changes live over the events socket. They have their own "cyex.tv" switch (on by default), work on Twitch and Kick, respect "Animations" (first frame when off) and "Readable colours", and win over a 7TV paint on the same name.
 
+## Selector check
+
+The popup's "Check this page's selectors" (on any Twitch or Kick page) and the keyboard command Alt+Shift+H (changeable under the browser's extension shortcuts) open a small panel on the page, in its own shadow root, so it is nothing of the site's UI and the site's styles can't reach it. It lists every chat hook (chat list, messages, message text, name, timestamp slot, badge slot, message box, button slot, deleted notice, claim button, user card) and every "Hide on ..." part with "found" or "not found on this page" and how many elements matched (for hide parts also which of the selectors did), a "Not found" filter, Refresh, and "Copy report" (JSON: the extension version, site, kind of page, day, and per key found / count / selectors; no names, messages or addresses). Parts that only exist at times (a hype train, a deleted message, the claim button) show as not found until they appear. The tests run the same check against the fixtures in `tests/site-fixtures.ts`, so a selector edit that stops matching its fixture fails. It needs no permission (`commands` and `tabs.sendMessage` are free).
+
 ## Messages and reading
 
 | Feature | Who has it | Twitch | Kick | Effort | Value | Decision |
