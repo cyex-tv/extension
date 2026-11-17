@@ -22,6 +22,7 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 
 - [ ] cyex deck supporter badges, BTTV and FFZ badges show before the name on Twitch, each tooltip naming its provider.
 - [ ] Each badge provider's switch hides its badges in new messages.
+- [ ] 7TV badges and name paints show for 7TV users in a busy channel (gradients, pictures, shadows), on Twitch and Kick; with 7TV's own extension installed they're left to it.
 
 ## Personal emotes (cyex.tv)
 

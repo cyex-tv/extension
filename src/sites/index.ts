@@ -18,6 +18,8 @@ export interface Site {
   skip: string;
   /** Where other providers' badges go: before this element. Null where they don't apply. */
   badgeSlot(message: Element): Element | null;
+  /** The chatter's name, for name paints. */
+  nameElement(message: Element): HTMLElement | null;
 }
 
 /** The login in the address: `/name`, `/popout/name/chat`, `/moderator/name`. */

@@ -26,4 +26,7 @@ export const twitch: Site = {
   badgeSlot(message) {
     return message.querySelector('.chat-line__username');
   },
+  nameElement(message) {
+    return message.querySelector<HTMLElement>('.chat-author__display-name');
+  },
 };
