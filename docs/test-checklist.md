@@ -51,6 +51,13 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 
 ## Clean up
 
+- [ ] Each "hide" switch hides its part on a live Twitch channel: bits button, channel points summary, prediction/poll cards, paid pinned (Hype Chat) messages, leaderboard, "Recommended channels" in the side nav, gift sub banners, viewer count. The selectors in `src/sites/twitch.ts` are best guesses; check each one on the live site and fix the list if one misses.
+- [ ] Turning a switch off brings the part back without a reload; chat keeps working while parts are hidden (no React errors in the console).
+- [ ] On Kick the hide switches change nothing (no selectors yet).
+- [ ] Auto-claim (off by default): with it on, the points bonus chest is claimed within about 5 s of appearing, also in a background tab, and never clicked twice within 10 s. With 7TV, BTTV or FFZ installed it stays off unless "draw anyway" is on.
+- [ ] Rich tooltips: hovering one of our emotes shows the card (big picture, name, provider and author) with no native tooltip; zero-width overlays are listed below; it flips below near the top of the window, stays inside the viewport at the edges, and disappears on mouse out and on scroll. No fade with reduced motion.
+- [ ] With "Tooltips" off in settings, no card and no native tooltip.
+
 ## Coexistence
 
 - [ ] With the 7TV, BTTV or FFZ extension installed, that provider's emotes are left to it by default (no doubled pictures); turning on "draw anyway" brings them back.
