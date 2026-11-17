@@ -69,6 +69,16 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 
 ## Usercard and shortcuts
 
+- [ ] Twitch: click a chatter's name; their card gets a "Messages" section at the bottom with a count and their latest 10 messages since you opened the chat, newest first, `HH:mm` before each. Readable on dark and light themes.
+- [ ] A chatter with no messages seen shows "No messages from them since you opened this chat."; a message they send while the card is open appears in it.
+- [ ] Opening another chatter's card (or the same card element reused) shows that chatter's messages, never doubled sections.
+- [ ] Switching channel starts the lists empty. Messages with emotes show their text names, and nothing in a message is read as markup.
+- [ ] Kick (needs a live check, the selector is a best guess): click a chatter's name in chat; the popup gets the same section. If not, note the popup's markup for `userCard()` in src/sites/kick.ts.
+- [ ] With the setting off, no section appears; turning it off with a card open removes it.
+- [ ] Alt+E opens and closes the emote menu (once the emote menu is built); no effect with Ctrl or Cmd held.
+- [ ] "/" outside any text box focuses the message box and doesn't type a slash; inside the message box, search fields or other inputs it types a slash as usual.
+- [ ] Shortcuts off: Alt+E and "/" do nothing.
+
 ## Clean up
 
 - [ ] Each "hide" switch hides its part on a live Twitch channel: bits button, channel points summary, prediction/poll cards, paid pinned (Hype Chat) messages, leaderboard, "Recommended channels" in the side nav, gift sub banners, viewer count. The selectors in `src/sites/twitch.ts` are best guesses; check each one on the live site and fix the list if one misses.

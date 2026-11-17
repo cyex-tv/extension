@@ -86,7 +86,7 @@ export const PAGES: Page[] = [
       },
       {
         title: 'Keyboard',
-        items: [{ kind: 'toggle', key: 'chat.shortcuts', label: 'Shortcuts', hint: 'Alt+E opens the emote menu, Esc closes it.' }],
+        items: [{ kind: 'toggle', key: 'chat.shortcuts', label: 'Shortcuts', hint: 'Alt+E opens the emote menu. / jumps to the message box.' }],
       },
     ],
   },
