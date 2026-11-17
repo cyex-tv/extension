@@ -11,6 +11,7 @@ export function itemKeys(item: Item): string[] {
     case 'cosmetics':
       return ['cosmetics'];
     case 'notes':
+    case 'hiddenEmotes':
     case 'link':
     case 'shortcuts':
     case 'backup':
@@ -37,7 +38,7 @@ export function resetSection(settings: Settings, s: Section): Settings {
 /** What a search matches: the item's words, its section's and its page's. */
 function words(page: Page, section: Section, item: Item): string {
   const own = 'label' in item ? `${item.label} ${item.hint ?? ''}` : '';
-  const drawn = item.kind === 'providers' ? 'cyex.tv 7TV BetterTTV FrankerFaceZ order emotes' : item.kind === 'cosmetics' ? 'badges paints cyex deck supporters' : '';
+  const drawn = item.kind === 'providers' ? 'cyex.tv 7TV BetterTTV FrankerFaceZ order emotes' : item.kind === 'cosmetics' ? 'badges paints cyex deck supporters' : item.kind === 'hiddenEmotes' ? 'hidden emotes unhide show again' : '';
   return `${page.title} ${section.title} ${section.hint ?? ''} ${own} ${drawn}`.toLowerCase();
 }
 

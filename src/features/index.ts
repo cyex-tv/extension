@@ -3,6 +3,7 @@
 // skips everything after it.
 import { autoClaim } from './cleanup/auto-claim';
 import { hideClutter } from './cleanup/hide-clutter';
+import { hideEmotes } from './cleanup/hide-emote';
 import { richTooltips } from './cleanup/rich-tooltips';
 import { emoteMenu, tabComplete } from './composer';
 import { emoteClick } from './composer/emote-click';
@@ -25,6 +26,7 @@ export const FEATURES: FeatureFactory[] = [
   repeats,
   ...LOOKS,
   hideClutter,
+  hideEmotes,
   autoClaim,
   richTooltips,
   nicknames,

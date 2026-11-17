@@ -39,6 +39,14 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 - [ ] "Animations off" shows still pictures; "on hover" animates only the emote under the pointer.
 - [ ] Switching the extension off for a channel leaves that chat untouched.
 
+## Hidden emotes
+
+- [ ] Right-click a cyex.tv, 7TV, BTTV or FFZ emote in a chat line (Twitch and Kick): a small menu shows its picture, name and provider with "Hide this emote" and the browser's menu doesn't open. Shift or Ctrl with the right button gives the browser's menu; right-clicking text, a native emote or an emote in the emote menu is untouched.
+- [ ] Picking it turns that emote into its name in every message already on screen and in new ones (all channels, both sites); Esc, a click elsewhere, scrolling and Tab close the menu without hiding. Right-clicking the name shows "Show this emote".
+- [ ] Settings → Emotes and badges → Hidden emotes lists it with its picture, "Unhide" brings it back (with Undo); "Unhide all" asks nothing but offers Undo. Setting "A hidden emote shows as" to Nothing removes it from the line altogether. Another tab's change shows without a reload, in chat and on the settings page.
+- [ ] Turning the switch off shows all emotes again and keeps the list; turning it on hides them again. Two emotes with the same name from different providers hide separately.
+- [ ] Light and dark theme: the menu follows the Theme setting; at 375 px wide the settings list fits.
+
 ## Repeated messages
 
 - [ ] Settings → Chat → Repeated messages is Off by default; with Off nothing changes in a busy chat.

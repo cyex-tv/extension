@@ -15,6 +15,8 @@ export type ChatFont = 'site' | 'system' | 'serif' | 'mono';
 export type EmoteClick = 'off' | 'insert' | 'copy';
 /** How repeated messages from different chatters show: not folded, folded with a x N, or kept and faded. */
 export type Repeats = 'off' | 'count' | 'dim';
+/** What a hidden emote shows as: its name, or nothing. */
+export type HiddenEmoteStyle = 'text' | 'none';
 export type Sound = 'chime' | 'ping' | 'pop';
 
 /** A word rule (cyex deck's Highlights → Words). */
@@ -62,6 +64,9 @@ export type ChatSettings = {
   /** Emote size in percent of the sites' 28 px; 0 keeps it. */
   emoteScale: number;
   emoteClick: EmoteClick;
+  /** Right-click an emote to hide it (the list is kept on this device). */
+  emoteHide: boolean;
+  hiddenEmoteStyle: HiddenEmoteStyle;
   /** Strip invisible characters (zero-width spaces, 7TV's duplicate bypass) from messages. */
   cleanInvisible: boolean;
   /** Cut stacks of combining marks ("zalgo") down to three. */
@@ -146,6 +151,8 @@ export const CHAT_DEFAULTS: ChatSettings = {
   compact: false,
   emoteScale: 0,
   emoteClick: 'insert',
+  emoteHide: true,
+  hiddenEmoteStyle: 'text',
   cleanInvisible: true,
   cleanZalgo: true,
   lastRead: true,
@@ -268,6 +275,8 @@ export function mergeChat(stored: unknown): ChatSettings {
     compact: b('compact'),
     emoteScale: range(c.emoteScale, 50, 300, 0),
     emoteClick: oneOf(c.emoteClick, ['off', 'insert', 'copy'] as const, d.emoteClick),
+    emoteHide: b('emoteHide'),
+    hiddenEmoteStyle: oneOf(c.hiddenEmoteStyle, ['text', 'none'] as const, d.hiddenEmoteStyle),
     cleanInvisible: b('cleanInvisible'),
     cleanZalgo: b('cleanZalgo'),
     lastRead: b('lastRead'),
