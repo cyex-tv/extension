@@ -39,6 +39,10 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 - [ ] "Animations off" shows still pictures; "on hover" animates only the emote under the pointer.
 - [ ] Switching the extension off for a channel leaves that chat untouched.
 
+## Blocked users
+
+- [ ] Block a test account on Twitch (and on Kick) and have it post: note whether the site itself still shows its messages in chat. If it does, the site's blocked list is not honoured by the extension; "Hide people locally" under Ignores is the way (see docs/features.md for why the site's list isn't read).
+
 ## Animate only when focused
 
 - [ ] Settings → Emotes and badges → "Animate only when focused" is off by default; with Animations "On" and this on, animated emotes, animated cyex.tv badges and cyex.tv image paints move while the chat window is in front.
