@@ -54,4 +54,16 @@ export class EmoteIndex {
   get size(): number {
     return new Set([...this.channel.keys(), ...this.global.keys()]).size;
   }
+
+  /** Every emote in the index, the channel's first, then the global ones it doesn't hide. Read-only. */
+  all(): Emote[] {
+    const out = [...this.channel.values()];
+    for (const [name, e] of this.global) if (!this.channel.has(name)) out.push(e);
+    return out;
+  }
+
+  /** Whether `emote` came from the channel's sets (else it is a global one). */
+  isChannel(emote: Emote): boolean {
+    return this.channel.get(emote.name) === emote;
+  }
 }
