@@ -2,7 +2,7 @@
 // ": " separator after the username. Kick's own emotes are `[data-emote-id]` spans. The channel
 // comes from Kick's public channel endpoint (same origin): cyex.tv and 7TV key Kick channels by
 // the broadcaster's user ID.
-import { type Channel, type Site, loginFromPath } from './index';
+import { type Channel, type Site, cardLogin, loginFromPath } from './index';
 
 // Every Kick selector the extension uses is in this file.
 
@@ -79,7 +79,14 @@ export const kick: Site = {
   claimButton() {
     return null;
   },
-  userCard() {
+  // Needs a live check: Kick's name popup has no stable hooks we know of, so take a popover or
+  // dialog that has a bare profile link (`/name`) and isn't the chat itself.
+  userCard(doc) {
+    for (const card of doc.querySelectorAll('[data-testid*="user-card"], [data-testid*="user-info"], [role="dialog"], [data-radix-popper-content-wrapper]')) {
+      if (card.closest('#chatroom-messages')) continue;
+      const login = cardLogin(card, 'a[href^="/"]');
+      if (login) return { card, login };
+    }
     return null;
   },
 };

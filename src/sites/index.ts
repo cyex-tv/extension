@@ -65,3 +65,27 @@ export function cookie(doc: Document, name: string): string | null {
   }
   return null;
 }
+
+const LOGIN = /^[a-z0-9_]{2,25}$/i;
+
+/** The login a user card shows: a profile link inside it (`/name`), else an "@name" text. */
+export function cardLogin(card: Element, linkSelector: string): string | null {
+  for (const a of card.querySelectorAll<HTMLAnchorElement>(linkSelector)) {
+    const href = a.getAttribute('href') ?? '';
+    const path = href.startsWith('http') ? safePath(href) : href.split(/[?#]/)[0] ?? '';
+    const parts = path.split('/').filter(Boolean);
+    // Only a bare `/name` is a profile link; `/name/videos` and the like are other pages.
+    const login = parts.length === 1 ? loginFromPath(`/${parts[0]}`) : null;
+    if (login && LOGIN.test(login)) return login;
+  }
+  const at = /(?:^|\s)@([a-z0-9_]{2,25})(?:\s|$)/i.exec(card.textContent ?? '');
+  return at?.[1] ? at[1].toLowerCase() : null;
+}
+
+function safePath(url: string): string {
+  try {
+    return new URL(url).pathname;
+  } catch {
+    return '';
+  }
+}

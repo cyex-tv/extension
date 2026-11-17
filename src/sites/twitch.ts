@@ -2,7 +2,7 @@
 // `.text-fragment` spans inside `[data-a-target="chat-line-message-body"]`. The page script
 // tags each message with its sender and <html> with the channel ID. Every Twitch selector the
 // extension uses is in this file, so a Twitch redesign is a fix here.
-import { type Channel, type Site, cookie, loginFromPath } from './index';
+import { type Channel, type Site, cardLogin, cookie, loginFromPath } from './index';
 
 const MESSAGE = '[data-a-target="chat-line-message"]';
 
@@ -71,9 +71,11 @@ export const twitch: Site = {
     return doc.querySelector<HTMLElement>('.community-points-summary .claimable-bonus__icon')?.closest('button') ?? null;
   },
   userCard(doc) {
-    const card = doc.querySelector('[data-a-target="viewer-card"]');
-    const link = card?.querySelector<HTMLAnchorElement>('.viewer-card-header__display-name a[href], h4 a[href]');
-    const login = link ? loginFromPath(new URL(link.href, 'https://www.twitch.tv').pathname) : null;
-    return card && login ? { card, login } : null;
+    // Twitch has renamed the card's parts before: try the target, then the label, then the class.
+    const card = doc.querySelector('[data-a-target="viewer-card"], [data-test-selector="viewer-card"], .viewer-card');
+    if (!card) return null;
+    const header = '.viewer-card-header__display-name a[href], [data-a-target="viewer-card-header"] a[href], h4 a[href], a[href^="/"], a[href*="twitch.tv/"]';
+    const login = cardLogin(card, header);
+    return login ? { card, login } : null;
   },
 };
