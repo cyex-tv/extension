@@ -6,6 +6,7 @@ import type { ProviderId } from '../providers/types';
 import { NICK_MAX, NOTE_MAX, NotesStore } from '../features/people/notes';
 import { type Settings, load, merge, save } from '../settings';
 import { ICON, el, icon, input as inputEl, segmented, toggle } from '../ui/dom';
+import { useTheme } from '../ui/theme';
 import { type Item, PAGES, type RuleField, getPath, setPath } from './schema';
 
 let settings: Settings;
@@ -15,6 +16,7 @@ const notes = new NotesStore();
 async function update(next: Settings) {
   // Through `merge`, so the page can only ever store what the content scripts accept.
   settings = merge(next);
+  useTheme(document, settings.theme);
   render();
   await save(ext().storage.sync, settings);
 }
@@ -167,6 +169,10 @@ function itemNode(item: Item): HTMLElement {
       return cosmetics();
     case 'notes':
       return notesItem();
+    case 'link': {
+      const a = el('a', { className: 'btn', href: item.href, target: '_blank', rel: 'noreferrer' }, item.text);
+      return field(item.label, item.hint, a);
+    }
   }
 }
 
@@ -201,6 +207,7 @@ function render() {
 
 async function main() {
   settings = await load(ext().storage.sync);
+  useTheme(document, settings.theme);
   await notes.load(ext().storage.local);
   notes.subscribe(render);
   const fromHash = location.hash.slice(1);

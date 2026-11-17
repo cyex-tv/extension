@@ -7,6 +7,8 @@ import { DEFAULT_ORDER } from './providers';
 import type { ProviderId } from './providers/types';
 
 export type Animations = 'on' | 'off' | 'hover';
+/** The extension's own pages (popup, settings, welcome); the sites keep theirs. */
+export type Theme = 'dark' | 'light' | 'system';
 export type DeletedStyle = 'site' | 'strike' | 'faded' | 'hidden';
 export type Clock = '24h' | '12h';
 export type ChatFont = 'site' | 'system' | 'serif' | 'mono';
@@ -117,6 +119,7 @@ export type Settings = {
   tooltips: boolean;
   /** Draw a provider's emotes even when its own extension (7TV, BTTV, FFZ) is installed. */
   overrideOthers: boolean;
+  theme: Theme;
   chat: ChatSettings;
 };
 
@@ -179,6 +182,7 @@ export const DEFAULTS: Settings = {
   disabledChannels: [],
   tooltips: true,
   overrideOthers: false,
+  theme: 'dark',
   chat: CHAT_DEFAULTS,
 };
 
@@ -315,6 +319,7 @@ export function merge(stored: unknown): Settings {
     disabledChannels: Array.isArray(s.disabledChannels) ? s.disabledChannels.filter((c) => typeof c === 'string') : [],
     tooltips: typeof s.tooltips === 'boolean' ? s.tooltips : DEFAULTS.tooltips,
     overrideOthers: typeof s.overrideOthers === 'boolean' ? s.overrideOthers : DEFAULTS.overrideOthers,
+    theme: oneOf(s.theme, ['dark', 'light', 'system'] as const, DEFAULTS.theme),
     chat: mergeChat(s.chat),
   };
 }

@@ -18,8 +18,10 @@ const ENTRIES = {
   background: 'src/background/index.ts',
   popup: 'src/popup/index.ts',
   options: 'src/options/index.ts',
+  onboarding: 'src/onboarding/index.ts',
+  theme: 'src/theme/index.ts',
 };
-const STATIC = ['src/popup/popup.html', 'src/popup/popup.css', 'src/options/options.html', 'src/options/options.css'];
+const STATIC = ['src/popup/popup.html', 'src/popup/popup.css', 'src/options/options.html', 'src/options/options.css', 'src/onboarding/onboarding.html', 'src/onboarding/onboarding.css'];
 const targets = process.argv.slice(2).filter((t) => t === 'chrome' || t === 'firefox');
 
 for (const target of targets.length ? targets : ['chrome', 'firefox']) {
