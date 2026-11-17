@@ -45,6 +45,19 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 
 ## Highlights and ignores
 
+- [ ] A message with your name (as `@name` or `name`) gets a blue tinted line with a bar on its left; your own messages never count as mentions.
+- [ ] A word rule colours the line (red by default); with "colour only the words" just the matched words are marked and the line stays plain.
+- [ ] A rule's own colour wins; a person rule (purple by default) colours that person's messages; the order is your name, people, words, first messages, your own.
+- [ ] On Twitch a first message is green with a small "First message" row above it (Kick has no flag, so none there).
+- [ ] "Your own messages" tints your lines when on; people in "Never highlight" (a bot) never light up or ping.
+- [ ] With sounds on, a mention or a rule with sound plays a soft two-note chime, at most one every 1.5 s, also in a background tab; nothing plays for the messages already in chat at load.
+- [ ] Before you have clicked on the page the chime may be blocked; after the first click it works.
+- [ ] A broken regex in a word rule does nothing (no error, chat keeps going).
+- [ ] A hidden person's messages disappear (also with the extension's other features on); turning them off brings them back.
+- [ ] An ignore rule set to "hide" hides the whole message; otherwise the words become `***` (or your swap), while emotes, @mentions and links in the same message stay as they were.
+- [ ] Your own messages are never hidden or swapped.
+- [ ] Changing a rule on the settings page applies to new messages without reloading.
+
 ## Writing
 
 ## Usercard and shortcuts

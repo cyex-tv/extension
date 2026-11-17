@@ -3,7 +3,8 @@ import { autoClaim } from './cleanup/auto-claim';
 import { hideClutter } from './cleanup/hide-clutter';
 import { richTooltips } from './cleanup/rich-tooltips';
 import type { Feature } from './types';
+import { highlights, ignores } from './highlights';
 
 export type FeatureFactory = () => Feature;
 
-export const FEATURES: FeatureFactory[] = [hideClutter, autoClaim, richTooltips];
+export const FEATURES: FeatureFactory[] = [ignores, highlights, hideClutter, autoClaim, richTooltips];

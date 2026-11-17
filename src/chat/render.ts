@@ -70,7 +70,7 @@ export function emoteElement(doc: Document, token: Extract<Token, { kind: 'emote
 }
 
 /** Text nodes under `root` that may be rewritten. */
-function textNodes(root: Element, skip: string): Text[] {
+export function textNodes(root: Element, skip: string): Text[] {
   const out: Text[] = [];
   const walker = root.ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
