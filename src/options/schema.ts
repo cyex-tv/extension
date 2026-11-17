@@ -16,7 +16,9 @@ export type Item =
   | { kind: 'providers' }
   | { kind: 'cosmetics' }
   /** Drawn by the page: nicknames and notes, from the device's storage. */
-  | { kind: 'notes' };
+  | { kind: 'notes' }
+  /** A link to another page, as a row with a button. */
+  | { kind: 'link'; label: string; hint?: string; href: string; text: string };
 
 export type Section = { title: string; hint?: string; items: Item[] };
 export type Page = { id: string; title: string; hint: string; sections: Section[] };
@@ -295,6 +297,33 @@ export const PAGES: Page[] = [
     title: 'Hide on Kick',
     hint: 'Hide parts of Kick you don’t use. Nothing is removed: switch a part back on and it returns at once.',
     sections: hideSections(KICK_HIDE, 'chat.hideKick'),
+  },
+  {
+    id: 'about',
+    title: 'About',
+    hint: 'This extension’s own pages, and where to start again.',
+    sections: [
+      {
+        title: 'Look',
+        items: [
+          {
+            kind: 'choice',
+            key: 'theme',
+            label: 'Theme',
+            hint: 'For the popup and these pages. Twitch and Kick keep their own.',
+            options: [
+              ['dark', 'Dark'],
+              ['light', 'Light'],
+              ['system', 'Like the system'],
+            ],
+          },
+        ],
+      },
+      {
+        title: 'Welcome',
+        items: [{ kind: 'link', label: 'Welcome page', hint: 'The three short steps from the first install, to pick emotes and a starting look again.', href: 'onboarding.html', text: 'Show the welcome page' }],
+      },
+    ],
   },
   {
     id: 'channels',

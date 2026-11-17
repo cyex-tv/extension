@@ -1,0 +1,44 @@
+/* The welcome page, on popup.css's tokens and controls: one narrow column of short steps. */
+body.welcome { width: auto; min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; }
+.welcome .bar .sub { color: var(--dim); font-size: .85rem; }
+.step { display: grid; align-content: start; gap: 12px; width: 100%; max-width: 560px; margin: 0 auto; padding: 32px 16px 40px; }
+.step h1 { margin: 0; font-size: 1.3rem; font-weight: 700; letter-spacing: 0; }
+.step h1:focus { outline: none; }
+.step h1:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+.step .lead { margin: 0 0 4px; color: var(--muted); }
+.step .label { margin-top: 8px; }
+.step > .label:first-child { margin-top: 0; }
+
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.actions .grow { flex: 1; }
+.btn { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: var(--radius);
+  background: none; color: var(--text); font: 600 .87rem/1 var(--font-ui); text-decoration: none; cursor: pointer; transition: background-color var(--fast), border-color var(--fast); }
+.btn:hover { background: var(--surface-hover); }
+.btn:active { opacity: .6; transition: none; }
+.btn.primary { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { background: var(--accent-2); border-color: var(--accent-2); }
+.btn.ghost { border-color: transparent; color: var(--muted); }
+.btn.ghost:hover { color: var(--text); background: var(--surface-hover); }
+
+/* Presets: a radio per row; the picked one is bold with an accent dot (never a filled box). */
+.choice { align-items: flex-start; }
+.radio { flex: none; appearance: none; width: 16px; height: 16px; margin: 2px 0 0; border: 1.5px solid var(--dim); border-radius: 50%; cursor: pointer; display: grid; place-items: center; }
+.radio::after { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); scale: 0; transition: scale var(--fast) var(--ease); }
+.radio:checked { border-color: var(--accent); }
+.radio:checked::after { scale: 1; }
+.choice .name { font-weight: 400; }
+.choice.on .name { font-weight: 700; }
+
+.tips { display: grid; gap: 8px; margin: 4px 0 0; padding: 12px 14px 12px 30px; background: var(--surface); border: 1px solid var(--border); color: var(--muted); }
+.tips b { color: var(--text); font-weight: 600; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .step > * { animation: step-in var(--base, .2s) ease-out both; }
+}
+@keyframes step-in { from { opacity: 0; } to { opacity: 1; } }
+
+@media (max-width: 480px) {
+  .step { padding-top: 20px; }
+  .actions .grow { display: none; }
+  .actions .btn.primary { order: -1; width: 100%; }
+}

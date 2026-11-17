@@ -1,6 +1,7 @@
-/* The popup in the cyex-app tool style: warm grey, square panels, 3px controls, uppercase
-   labels. Dark only, like the cyex tools. Values from cyex-app's tokens.css; the fonts are the
-   system's (no font download from an extension page). */
+/* The extension's pages (popup, settings, welcome) in the cyex-app tool style: warm grey, square
+   panels, 3px controls, uppercase labels. Dark by default like the cyex tools; light is a full
+   peer (`data-theme="light"` on <html>, set from the Theme setting before the page draws).
+   Values from cyex-app's tokens.css; the fonts are the system's (no font download). */
 :root {
   color-scheme: dark;
   --bg: #1e1f23;
@@ -22,7 +23,30 @@
   --fast: .12s;
   --ease: cubic-bezier(.16, 1, .3, 1);
   --font-ui: 'IBM Plex Sans', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  --shadow-pop: 0 8px 24px rgba(0, 0, 0, .35);
 }
+
+:root[data-theme='light'] {
+  color-scheme: light;
+  --bg: #f3f3f4;
+  --surface: #ffffff;
+  --surface-hover: #f6f6f7;
+  --border: #dcdde1;
+  --border-strong: #c4c6cc;
+  --text: #1b1c20;
+  --muted: #4f515a;
+  --dim: #6b6d76;
+  --accent: #14e6ff;
+  --accent-2: #10c9e6;
+  --accent-text: #046a82;
+  --accent-ink: #00232b;
+  --accent-dim: rgba(4, 106, 130, .08);
+  --shadow-pop: 0 8px 24px rgba(20, 22, 30, .12);
+}
+
+/* The mark: three square bars, the middle one lit. */
+.mark .bar { fill: var(--text); }
+.mark .lit { fill: var(--accent); }
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }

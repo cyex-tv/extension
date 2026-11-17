@@ -27,10 +27,13 @@ interface ExtApi {
     };
     getURL(path: string): string;
     openOptionsPage(): Promise<void>;
+    onInstalled: { addListener(cb: (details: { reason: string; previousVersion?: string }) => void): void };
   };
   tabs: {
     /** With `activeTab`, the current tab's `url` is visible once the user opened the popup. */
     query(info: { active: boolean; currentWindow: boolean }): Promise<{ id?: number; url?: string }[]>;
+    /** Needs no permission for the extension's own pages. */
+    create(props: { url: string }): Promise<unknown>;
   };
   storage: {
     sync: ExtStorageArea;

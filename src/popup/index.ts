@@ -4,6 +4,7 @@ import { INBOX_KEY, type Mention, readInbox } from '../features/highlights/inbox
 import type { ProviderId } from '../providers/types';
 import { type Animations, type Settings, load, save } from '../settings';
 import { ICON, el, icon, toggle } from '../ui/dom';
+import { useTheme } from '../ui/theme';
 import { COSMETIC_LABEL, PROVIDER_LABEL, channelKey, channelUrl, mentionTime, move, setAnimations, setChannel, setCosmetics, setEmotes } from './model';
 
 const $ = <T extends Element>(sel: string) => document.querySelector<T>(sel)!;
@@ -78,6 +79,7 @@ function render() {
 
 async function main() {
   settings = await load(ext().storage.sync);
+  useTheme(document, settings.theme);
   try {
     const [tab] = await ext().tabs.query({ active: true, currentWindow: true });
     here = channelKey(tab?.url);

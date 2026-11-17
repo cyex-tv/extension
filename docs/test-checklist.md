@@ -39,6 +39,17 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 - [ ] "Animations off" shows still pictures; "on hover" animates only the emote under the pointer.
 - [ ] Switching the extension off for a channel leaves that chat untouched.
 
+## Welcome page
+
+- [ ] A fresh install (load unpacked into a new profile) opens "Welcome - cyex.tv" in a new tab once; reloading the extension or updating it doesn't open it again.
+- [ ] Step 1 lists cyex.tv, 7TV, BetterTTV and FrankerFaceZ, all on. Step 2 has "Keep Twitch as it is" (picked) and "Clean Twitch", then Readable name colors (on) and Timestamps (off). Step 3 says where settings are and links to cyex.tv.
+- [ ] "Skip, use defaults" is on steps 1 and 2 and leaves every setting as it was; "Save and finish" applies the picks (Clean Twitch hides the Prime, Bits and Ad-Free buttons, Stories, Viewers also watch, leaderboard, Hype Chat, gift banners, celebrations, first-time chatter prompt).
+- [ ] Keyboard only: Tab reaches every control in order, Space toggles, arrows move between the two presets, Enter presses buttons; after each step focus lands on its title. A screen reader reads "Step 2 of 3" and the title.
+- [ ] With reduced motion on, steps appear without a fade. At 375 px nothing scrolls sideways and "Next" is a full-width button on top.
+- [ ] Twitch and Kick chat work the same whether the page was finished, skipped or just closed.
+- [ ] Settings → About → "Show the welcome page" opens it again; picking "Keep Twitch as it is" there doesn't undo parts you hid yourself.
+- [ ] Settings → About → Theme: Dark, Light and Like the system change the popup, settings and welcome page (no flash of the other theme on open).
+
 ## Settings page
 
 - [ ] "All settings" in the popup opens the settings page in a tab; its sidebar shows Chat, Emotes and badges, Highlights, Ignores, Usercard, Hide on Twitch, Hide on Kick, Channels.
