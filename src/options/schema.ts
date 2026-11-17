@@ -17,6 +17,8 @@ export type Item =
   | { kind: 'cosmetics' }
   /** Drawn by the page: nicknames and notes, from the device's storage. */
   | { kind: 'notes' }
+  /** Drawn by the page: the emotes hidden with a right-click, with Unhide. */
+  | { kind: 'hiddenEmotes' }
   /** A link to another page, as a row with a button. */
   | { kind: 'link'; label: string; hint?: string; href: string; text: string }
   /** A list of keys and what they do (read only). */
@@ -194,6 +196,23 @@ export const PAGES: Page[] = [
               ['off', 'Nothing'],
             ],
           },
+        ],
+      },
+      {
+        title: 'Hidden emotes',
+        hint: 'Right-click an emote in chat and pick Hide this emote. The list stays on this device.',
+        items: [
+          { kind: 'toggle', key: 'chat.emoteHide', label: 'Hide emotes with a right-click', hint: 'Shift or Ctrl with the right button keeps the browser’s menu. Off shows every emote again; the list is kept.' },
+          {
+            kind: 'choice',
+            key: 'chat.hiddenEmoteStyle',
+            label: 'A hidden emote shows as',
+            options: [
+              ['text', 'Its name'],
+              ['none', 'Nothing'],
+            ],
+          },
+          { kind: 'hiddenEmotes' },
         ],
       },
       { title: 'Which wins', hint: 'First wins when two have an emote with the same name.', items: [{ kind: 'providers' }] },

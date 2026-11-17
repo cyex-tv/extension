@@ -2,6 +2,7 @@
 // is saved at once (the content scripts pick it up); text fields save when they lose focus or on
 // Enter. Each section can go back to its defaults, with an undo; About has the backup file.
 import { ext } from '../ext';
+import { HIDDEN_EMOTES_KEY, HiddenEmotesStore } from '../features/cleanup/hide-emote';
 import { NICK_MAX, NOTE_MAX, NotesStore } from '../features/people/notes';
 import { COSMETIC_LABEL, PROVIDER_LABEL, move, setCosmetics, setEmotes } from '../popup/model';
 import type { ProviderId } from '../providers/types';
@@ -15,6 +16,7 @@ let settings: Settings;
 let page = PAGES[0]!.id;
 let query = '';
 const notes = new NotesStore();
+const hidden = new HiddenEmotesStore();
 
 async function update(next: Settings) {
   // Through `merge`, so the page can only ever store what the content scripts accept.
@@ -177,6 +179,38 @@ function notesItem(): HTMLElement {
   return wrap;
 }
 
+function hiddenEmotesItem(): HTMLElement {
+  const all = hidden.list();
+  if (!all.length) return el('p', { className: 'hint block' }, 'None yet. Right-click an emote in chat to hide it.');
+  const panel = el('div', { className: 'panel' });
+  for (const e of all) {
+    const text = el('span', { className: 'text' }, el('span', { className: 'name' }, e.name), el('span', { className: 'hint' }, PROVIDER_LABEL[e.provider]));
+    const kids: Node[] = [];
+    if (e.url) {
+      const img = el('img', { className: 'emote-thumb', src: e.url, alt: '' });
+      img.loading = 'lazy';
+      img.addEventListener('error', () => img.remove());
+      kids.push(img);
+    }
+    const unhide = button('Unhide', 'link', () => {
+      void hidden.remove(e);
+      toast(`${e.name} is shown again.`, () => void hidden.add(e));
+    });
+    unhide.setAttribute('aria-label', `Unhide ${e.name}`);
+    panel.append(el('div', { className: 'row static' }, ...kids, text, unhide));
+  }
+  if (all.length > 1) {
+    panel.append(
+      button('Unhide all', 'wide', () => {
+        const before = hidden.list();
+        void hidden.set([]);
+        toast('Every emote is shown again.', () => void hidden.set(before));
+      }),
+    );
+  }
+  return panel;
+}
+
 function shortcutsItem(item: Extract<Item, { kind: 'shortcuts' }>): HTMLElement {
   const dl = el('dl', { className: 'keys' });
   for (const [k, what] of item.keys) dl.append(el('dt', {}, ...k.split(/(\+|, )/).map((p) => (p === '+' || p === ', ' ? p : el('kbd', {}, p)))), el('dd', {}, what));
@@ -261,6 +295,8 @@ function itemNode(item: Item): HTMLElement {
       return cosmetics();
     case 'notes':
       return notesItem();
+    case 'hiddenEmotes':
+      return hiddenEmotesItem();
     case 'shortcuts':
       return shortcutsItem(item);
     case 'backup':
@@ -358,6 +394,8 @@ async function main() {
   useTheme(document, settings.theme);
   await notes.load(ext().storage.local);
   notes.subscribe(render);
+  await hidden.load(ext().storage.local);
+  hidden.subscribe(render);
   const fromHash = location.hash.slice(1);
   if (PAGES.some((p) => p.id === fromHash)) page = fromHash;
   const box = document.querySelector<HTMLInputElement>('#search')!;
@@ -375,6 +413,7 @@ async function main() {
   });
   // Another tab (or the popup) changed the settings: show them.
   ext().storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && HIDDEN_EMOTES_KEY in changes) hidden.replace(changes[HIDDEN_EMOTES_KEY]?.newValue);
     if (area === 'sync' && 'settings' in changes) {
       void load(ext().storage.sync).then((s) => {
         if (JSON.stringify(s) === JSON.stringify(settings)) return;

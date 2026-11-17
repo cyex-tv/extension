@@ -3,6 +3,7 @@
 import type { Answer, Request } from '../background/fetcher';
 import { ext } from '../ext';
 import type { FetchJson } from '../providers/types';
+import { HIDDEN_EMOTES_KEY, hiddenEmotes } from '../features/cleanup/hide-emote';
 import { NOTES_KEY, notes } from '../features/people/notes';
 import { startHealth } from '../health/index';
 import { STORAGE_KEY, type Theme, load } from '../settings';
@@ -41,9 +42,11 @@ ext().storage.onChanged.addListener((changes, area) => {
   if (area === 'sync' && STORAGE_KEY in changes) void start();
   // Nicknames and notes changed in another tab or on the settings page: redraw, no restart.
   if (area === 'local' && NOTES_KEY in changes) notes.replace(changes[NOTES_KEY]?.newValue);
+  if (area === 'local' && HIDDEN_EMOTES_KEY in changes) hiddenEmotes.replace(changes[HIDDEN_EMOTES_KEY]?.newValue);
 });
 
 void notes.load(ext().storage.local);
+void hiddenEmotes.load(ext().storage.local);
 startHealth(location.hostname.endsWith('kick.com') ? kick : twitch, () => theme);
 
 start().catch((e) => console.warn('[cyex.tv]', e));

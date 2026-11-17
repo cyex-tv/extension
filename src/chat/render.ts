@@ -24,6 +24,7 @@ function biggest(emote: Emote): string {
 function describe(el: HTMLElement, emote: Emote) {
   el.dataset.provider = emote.provider;
   el.dataset.name = emote.name;
+  el.dataset.id = emote.id;
   if (emote.owner) el.dataset.owner = emote.owner;
   el.dataset.big = biggest(emote);
 }
