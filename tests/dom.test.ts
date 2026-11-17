@@ -126,7 +126,7 @@ describe('the app', () => {
   });
 
   it('loads globals and the channel, then rewrites a message', async () => {
-    const app = new App({ site: site({ id: '141981764', login: 'lumen_fox' }), fetch: apis.fetch, settings: settings() });
+    const app = new App({ site: site({ id: '141981764', login: 'lumen_fox' }), fetch: apis.fetch, settings: settings(), sockets: null });
     await app.loadGlobals();
     expect(await app.syncChannel()).toBe(true);
     expect(await app.syncChannel()).toBe(false);
@@ -140,11 +140,11 @@ describe('the app', () => {
 
   it('leaves a provider to its own extension unless told otherwise', async () => {
     document.documentElement.dataset.cyextvOthers = '7tv,ffz';
-    const app = new App({ site: site(null), fetch: apis.fetch, settings: settings() });
+    const app = new App({ site: site(null), fetch: apis.fetch, settings: settings(), sockets: null });
     expect(app.enabled()).toEqual(['cyextv', 'bttv']);
-    const forced = new App({ site: site(null), fetch: apis.fetch, settings: settings({ overrideOthers: true }) });
+    const forced = new App({ site: site(null), fetch: apis.fetch, settings: settings({ overrideOthers: true }), sockets: null });
     expect(forced.enabled()).toEqual(['cyextv', '7tv', 'bttv', 'ffz']);
-    const off = new App({ site: site(null), fetch: apis.fetch, settings: settings({ emotes: { ...DEFAULTS.emotes, bttv: false } }) });
+    const off = new App({ site: site(null), fetch: apis.fetch, settings: settings({ emotes: { ...DEFAULTS.emotes, bttv: false } }), sockets: null });
     expect(off.enabled()).toEqual(['cyextv']);
   });
 
@@ -153,6 +153,7 @@ describe('the app', () => {
       site: site({ id: '141981764', login: 'lumen_fox' }),
       fetch: apis.fetch,
       settings: settings({ disabledChannels: ['twitch:lumen_fox'] }),
+      sockets: null,
     });
     await app.loadGlobals();
     await app.syncChannel();
@@ -163,7 +164,7 @@ describe('the app', () => {
 
   it('looks up personal emotes for chatters in one batch and redraws their messages', async () => {
     vi.useFakeTimers();
-    const app = new App({ site: site({ id: '141981764', login: 'lumen_fox' }), fetch: apis.fetch, settings: settings() });
+    const app = new App({ site: site({ id: '141981764', login: 'lumen_fox' }), fetch: apis.fetch, settings: settings(), sockets: null });
     await app.loadGlobals();
     await app.syncChannel();
     // The personal set of 111 has pogHop; 222's is empty.

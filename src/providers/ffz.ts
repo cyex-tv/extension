@@ -62,10 +62,10 @@ export const ffz: EmoteProvider = {
     const defaults = arr(raw.default_sets).map(String);
     return fromSets(raw.sets, defaults, 'global');
   },
-  async channel(fetch: FetchJson, platform: Platform, channelId: string) {
+  async channel(fetch: FetchJson, platform: Platform, channelId: string, fresh = false) {
     const empty: EmoteSet = { provider: 'ffz', scope: 'channel', emotes: [] };
     if (platform !== 'twitch') return empty;
-    const raw = await fetch(`${API}/room/id/${encodeURIComponent(channelId)}`);
+    const raw = await fetch(`${API}/room/id/${encodeURIComponent(channelId)}`, { fresh });
     if (!isObject(raw) || !isObject(raw.sets)) return empty;
     return fromSets(raw.sets, null, 'channel');
   },

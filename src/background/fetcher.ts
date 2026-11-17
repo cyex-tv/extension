@@ -4,7 +4,8 @@
 // so a busy chat doesn't hit the APIs again for every channel switch.
 import { API_HOSTS } from '../providers';
 
-export type Request = { url: string; method?: 'GET' | 'POST'; body?: unknown };
+/** `fresh`: ask the API again now (revalidating with the ETag) instead of using a fresh-enough answer. */
+export type Request = { url: string; method?: 'GET' | 'POST'; body?: unknown; fresh?: boolean };
 export type Answer = { ok: true; data: unknown } | { ok: false; status: number; error: string };
 
 type Cached = { at: number; etag: string | null; data: unknown };
@@ -33,7 +34,7 @@ export function createFetcher(fetchImpl: typeof fetch = fetch, now: () => number
     const method = req.method ?? 'GET';
     const key = method === 'GET' ? req.url : `${req.url} ${JSON.stringify(req.body ?? null)}`;
     const hit = method === 'GET' ? cache.get(key) : undefined;
-    if (hit && now() - hit.at < FRESH_MS) return { ok: true, data: hit.data };
+    if (hit && !req.fresh && now() - hit.at < FRESH_MS) return { ok: true, data: hit.data };
 
     const headers: Record<string, string> = { accept: 'application/json' };
     if (hit?.etag) headers['if-none-match'] = hit.etag;

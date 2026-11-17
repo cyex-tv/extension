@@ -9,7 +9,7 @@ import { twitch } from '../sites/twitch';
 import { App } from './app';
 
 export const fetchJson: FetchJson = async (url, init) => {
-  const request: Request = { url, ...(init?.method ? { method: init.method } : {}), body: init?.body };
+  const request: Request = { url, ...(init?.method ? { method: init.method } : {}), body: init?.body, ...(init?.fresh ? { fresh: true } : {}) };
   const answer = (await ext().runtime.sendMessage({ type: 'fetch', request })) as Answer;
   if (!answer.ok) throw new Error(`${answer.error} (${answer.status}) for ${url}`);
   return answer.data;

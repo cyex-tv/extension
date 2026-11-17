@@ -75,14 +75,14 @@ export const cyextv: EmoteProvider = {
   async global(fetch: FetchJson) {
     return set(await fetch(`${API}/sets/global`), 'global');
   },
-  async channel(fetch: FetchJson, platform: Platform, channelId: string) {
+  async channel(fetch: FetchJson, platform: Platform, channelId: string, fresh = false) {
     const empty: EmoteSet = { provider: 'cyextv', scope: 'channel', emotes: [] };
-    const ch = await fetch(`${API}/channels/${platform}/${encodeURIComponent(channelId)}`);
+    const ch = await fetch(`${API}/channels/${platform}/${encodeURIComponent(channelId)}`, { fresh });
     if (!isObject(ch)) return empty;
     const active = str(ch.active_set_id);
     if (!active) return empty;
-    const raw = await fetch(`${API}/sets/${encodeURIComponent(active)}`);
-    return raw ? set(raw, 'channel') : empty;
+    const raw = await fetch(`${API}/sets/${encodeURIComponent(active)}`, { fresh });
+    return raw ? { ...set(raw, 'channel'), setId: active } : empty;
   },
 };
 

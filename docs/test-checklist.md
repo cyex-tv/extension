@@ -8,6 +8,8 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 - [ ] A channel's own emotes show, on at least three Twitch channels and two Kick channels.
 - [ ] Switching channels in the same tab (Twitch's sidebar) loads the new channel's emotes; the old ones stop matching.
 - [ ] Popout chat (`/popout/<channel>/chat`) works as well as the channel page.
+- [ ] An emote added to or removed from the channel's 7TV or cyex.tv set shows (or stops) in new messages within a few seconds, without a reload.
+- [ ] After the network drops and comes back, live updates resume (within a minute).
 - [ ] Words are matched whole and case-sensitive: `catJAM!` and `catjam` stay text.
 - [ ] Links and @mentions are never rewritten, even when they contain an emote name.
 - [ ] The site's own emotes (Twitch emotes, Kick emotes) are untouched.
@@ -15,6 +17,11 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 - [ ] Hovering an emote shows its name, provider and author.
 - [ ] Copying a message with emotes pastes the words as typed.
 - [ ] Emotes are as tall as the site's own (28 px) and don't shift the line when they load.
+
+## Badges
+
+- [ ] cyex deck supporter badges, BTTV and FFZ badges show before the name on Twitch, each tooltip naming its provider.
+- [ ] Each badge provider's switch hides its badges in new messages.
 
 ## Personal emotes (cyex.tv)
 

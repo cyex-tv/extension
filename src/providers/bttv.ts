@@ -51,10 +51,10 @@ export const bttv: EmoteProvider = {
     if (!Array.isArray(list)) throw new ShapeError('bttv', 'global emotes');
     return { provider: 'bttv', scope: 'global', emotes: list.flatMap((e) => emote(e) ?? []) };
   },
-  async channel(fetch: FetchJson, platform: Platform, channelId: string) {
+  async channel(fetch: FetchJson, platform: Platform, channelId: string, fresh = false) {
     const empty: EmoteSet = { provider: 'bttv', scope: 'channel', emotes: [] };
     if (platform !== 'twitch') return empty;
-    const user = await fetch(`${API}/cached/users/twitch/${encodeURIComponent(channelId)}`);
+    const user = await fetch(`${API}/cached/users/twitch/${encodeURIComponent(channelId)}`, { fresh });
     if (!isObject(user)) return empty;
     const all = [...arr(user.channelEmotes), ...arr(user.sharedEmotes)];
     return { provider: 'bttv', scope: 'channel', emotes: all.flatMap((e) => emote(e) ?? []) };
