@@ -15,6 +15,19 @@ function srcset(images: EmoteImage[]): string {
   return images.map((i) => `${i.url} ${i.scale === 1 ? 1 : Math.round((i.width / one.width) * 10) / 10}x`).join(', ');
 }
 
+/** The largest image, for the rich tooltip. */
+function biggest(emote: Emote): string {
+  return emote.images.reduce((a, b) => (b.width > a.width ? b : a)).url;
+}
+
+/** Name, author and big image as data attributes, read by the rich tooltip. */
+function describe(el: HTMLElement, emote: Emote) {
+  el.dataset.provider = emote.provider;
+  el.dataset.name = emote.name;
+  if (emote.owner) el.dataset.owner = emote.owner;
+  el.dataset.big = biggest(emote);
+}
+
 function picture(doc: Document, emote: Emote, opts: RenderOptions, overlay: boolean): HTMLImageElement {
   const img = doc.createElement('img');
   const still = emote.animated && opts.animations !== 'on' && emote.stills?.length ? emote.stills : null;
@@ -27,7 +40,10 @@ function picture(doc: Document, emote: Emote, opts: RenderOptions, overlay: bool
   img.height = one.height;
   img.loading = 'lazy';
   img.decoding = 'async';
-  if (overlay) img.className = 'cyextv-over';
+  if (overlay) {
+    img.className = 'cyextv-over';
+    describe(img, emote);
+  }
   if (still && opts.animations === 'hover') {
     img.dataset.cyextvAnimated = emote.images[0]!.url;
     img.dataset.cyextvAnimatedSet = srcset(emote.images);
@@ -44,7 +60,7 @@ export function tooltip(emote: Emote): string {
 export function emoteElement(doc: Document, token: Extract<Token, { kind: 'emote' }>, opts: RenderOptions): HTMLElement {
   const wrap = doc.createElement('span');
   wrap.className = EMOTE_CLASS;
-  wrap.dataset.provider = token.emote.provider;
+  describe(wrap, token.emote);
   if (opts.tooltips) wrap.title = [token.emote, ...token.overlays].map(tooltip).join('\n\n');
   wrap.append(picture(doc, token.emote, opts, false));
   for (const o of token.overlays) wrap.append(picture(doc, o, opts, true));

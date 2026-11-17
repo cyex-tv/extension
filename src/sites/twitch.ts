@@ -51,14 +51,17 @@ export const twitch: Site = {
   isFirst(message) {
     return message.hasAttribute('data-cyextv-first');
   },
+  // Several selectors per part, most stable first (data attributes, then aria, then class names).
+  // Each needs checking on the live site: Twitch renames these now and then.
   clutter: {
-    bits: '[data-a-target="bits-button"]',
-    points: '.community-points-summary',
-    predictions: '.community-highlight-stack__card',
-    hypeChat: '.paid-pinned-chat-message-list',
-    leaderboard: '.channel-leaderboard',
-    recommended: '.side-nav-section[aria-label*="ecommended"]',
-    viewerCount: '[data-a-target="animated-channel-viewers-count"]',
+    bits: '[data-a-target="bits-button"], [data-test-selector="bits-button"], button[aria-label="Bits"]',
+    points: '.community-points-summary, [data-test-selector="community-points-summary"]',
+    predictions: '.community-highlight-stack__card, [data-test-selector="prediction-checkout-active-header"], [data-test-selector="community-prediction-highlight-header"]',
+    hypeChat: '.paid-pinned-chat-message-list, [data-test-selector="paid-pinned-chat-message-list"], .pinned-chat__pinned-by',
+    leaderboard: '.channel-leaderboard, [data-test-selector="channel-leaderboard"]',
+    recommended: '.side-nav-section[aria-label*="ecommended"], [data-test-selector="recommended-channels"]',
+    giftBanners: '[data-test-selector="gift-sub-banner"], .channel-root__gift-banner, [data-a-target="gift-sub-button"], .community-highlight-stack__card[aria-label*="ift"]',
+    viewerCount: '[data-a-target="animated-channel-viewers-count"], [data-a-target="channel-viewers-count"]',
   },
   claimButton(doc) {
     return doc.querySelector<HTMLElement>('.community-points-summary .claimable-bonus__icon')?.closest('button') ?? null;
