@@ -43,6 +43,13 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 
 ## Chat looks
 
+- [ ] Timestamps on: each line starts with a dim time (24h `09:05`, 12h `9:05 am`, seconds when on); hovering shows `YYYY/MM/DD HH:mm:ss`. On Kick it sits after Kick's own clock.
+- [ ] Deleted messages (strike, faded, hidden): a mod deletes a line, the text stays with a `(deleted)` note and the site's own notice is hidden. On Kick this relies on its struck-through notice; check it on a live deletion.
+- [ ] Deleted set to "site": the site's own notice shows, nothing of ours is added.
+- [ ] Readable colours: a dark blue name on dark chat gets lighter; on a light theme dim yellow gets darker; 7TV paints are untouched. Off restores the original colours.
+- [ ] Alternate lines, separators and font size each apply on their own and together; stripes do not jump while old lines scroll off.
+- [ ] Last read: switch tabs, new messages arrive, switch back: a red line sits under the last message you saw. With no new messages, no line.
+
 ## Highlights and ignores
 
 - [ ] A message with your name (as `@name` or `name`) gets a blue tinted line with a bar on its left; your own messages never count as mentions.
