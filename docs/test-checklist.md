@@ -39,6 +39,12 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 - [ ] "Animations off" shows still pictures; "on hover" animates only the emote under the pointer.
 - [ ] Switching the extension off for a channel leaves that chat untouched.
 
+## Animate only when focused
+
+- [ ] Settings → Emotes and badges → "Animate only when focused" is off by default; with Animations "On" and this on, animated emotes, animated cyex.tv badges and cyex.tv image paints move while the chat window is in front.
+- [ ] Click into another window (or switch tabs): within a moment they show their first frame; new messages in the background draw frozen. Come back: they move again, new and old alike. A popout chat in its own window follows its own focus.
+- [ ] With Animations "On hover" or "Off" the switch changes nothing. 7TV paints keep moving (they have no still). Switching the setting off while frozen leaves nothing stuck.
+
 ## Hidden emotes
 
 - [ ] Right-click a cyex.tv, 7TV, BTTV or FFZ emote in a chat line (Twitch and Kick): a small menu shows its picture, name and provider with "Hide this emote" and the browser's menu doesn't open. Shift or Ctrl with the right button gives the browser's menu; right-clicking text, a native emote or an emote in the emote menu is untouched.

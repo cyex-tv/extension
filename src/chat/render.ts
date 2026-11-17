@@ -3,12 +3,20 @@
 // the same message changes nothing the second time.
 import type { Animations } from '../settings';
 import type { Emote, EmoteImage } from '../providers/types';
+import { placeMotion } from './motion';
 import { type Find, type Token, tokenize } from './tokenize';
 
 export const EMOTE_CLASS = 'cyextv-emote';
 const PROVIDER_NAME: Record<Emote['provider'], string> = { cyextv: 'cyex.tv', '7tv': '7TV', bttv: 'BTTV', ffz: 'FFZ' };
 
-export type RenderOptions = { animations: Animations; tooltips: boolean };
+export type RenderOptions = {
+  animations: Animations;
+  tooltips: boolean;
+  /** Animated emotes can be frozen later (animate only when the window is focused). */
+  pausable?: boolean;
+  /** Frozen now: draw the first frame, keep the moving one for later. */
+  paused?: boolean;
+};
 
 function srcset(images: EmoteImage[]): string {
   const one = images[0]!;
@@ -36,6 +44,10 @@ function picture(doc: Document, emote: Emote, opts: RenderOptions, overlay: bool
   const one = shown[0]!;
   img.src = one.url;
   img.srcset = srcset(shown);
+  if (opts.pausable && opts.animations === 'on' && emote.animated && emote.stills?.length) {
+    const first = emote.stills[0]!;
+    placeMotion(img, { moving: { src: one.url, set: srcset(emote.images) }, still: { src: first.url, set: srcset(emote.stills) } }, !!opts.paused);
+  }
   img.alt = emote.name;
   img.width = one.width;
   img.height = one.height;

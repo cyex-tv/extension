@@ -123,6 +123,8 @@ export type Settings = {
   /** Which provider's emote wins a shared name; earlier wins. */
   order: ProviderId[];
   animations: Animations;
+  /** With Animations on: emotes, badges and cyex.tv paints hold still while the window isn't the one in use. */
+  animateOnlyFocused: boolean;
   /** `platform:login` of channels where the extension stays out. */
   disabledChannels: string[];
   tooltips: boolean;
@@ -191,6 +193,7 @@ export const DEFAULTS: Settings = {
   cosmetics: { cyextv: true, cyexdeck: true, '7tv': true, bttv: true, ffz: true },
   order: [...DEFAULT_ORDER],
   animations: 'on',
+  animateOnlyFocused: false,
   disabledChannels: [],
   tooltips: true,
   overrideOthers: false,
@@ -331,6 +334,7 @@ export function merge(stored: unknown): Settings {
     // Keep the user's order, then add any provider they haven't placed (a new one, say).
     order: [...new Set([...order, ...DEFAULT_ORDER])],
     animations: s.animations === 'off' || s.animations === 'hover' ? s.animations : 'on',
+    animateOnlyFocused: typeof s.animateOnlyFocused === 'boolean' ? s.animateOnlyFocused : DEFAULTS.animateOnlyFocused,
     disabledChannels: Array.isArray(s.disabledChannels) ? s.disabledChannels.filter((c) => typeof c === 'string') : [],
     tooltips: typeof s.tooltips === 'boolean' ? s.tooltips : DEFAULTS.tooltips,
     overrideOthers: typeof s.overrideOthers === 'boolean' ? s.overrideOthers : DEFAULTS.overrideOthers,
