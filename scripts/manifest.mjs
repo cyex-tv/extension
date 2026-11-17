@@ -12,14 +12,15 @@ export function manifest(target, version) {
     short_name: 'cyex.tv',
     description: 'Emotes, badges and name paints from cyex.tv, 7TV, BTTV and FFZ in Twitch and Kick chat.',
     version,
-    permissions: ['storage'],
+    // activeTab: the popup reads the open tab's address (to switch a channel off) after a click.
+    permissions: ['storage', 'activeTab'],
     host_permissions: HOSTS,
     content_scripts: [
       // Reads the sites' React props (sender and channel IDs) into data attributes; see src/main.
       { matches: SITES, js: ['main.js'], run_at: 'document_idle', world: 'MAIN' },
       { matches: SITES, js: ['content.js'], run_at: 'document_idle' },
     ],
-    action: { default_title: 'cyex.tv', default_icon: { 16: 'icons/16.png', 32: 'icons/32.png', 48: 'icons/48.png' } },
+    action: { default_title: 'cyex.tv', default_popup: 'popup.html', default_icon: { 16: 'icons/16.png', 32: 'icons/32.png', 48: 'icons/48.png' } },
     icons: { 16: 'icons/16.png', 32: 'icons/32.png', 48: 'icons/48.png', 128: 'icons/128.png' },
   };
   if (target === 'chrome') return { ...base, background: { service_worker: 'background.js' }, minimum_chrome_version: '116' };

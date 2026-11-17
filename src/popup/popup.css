@@ -1,0 +1,73 @@
+/* The popup in the cyex-app tool style: warm grey, square panels, 3px controls, uppercase
+   labels. Dark only, like the cyex tools. Values from cyex-app's tokens.css; the fonts are the
+   system's (no font download from an extension page). */
+:root {
+  color-scheme: dark;
+  --bg: #1e1f23;
+  --surface: #26272c;
+  --surface-hover: #2d2e34;
+  --border: #34353c;
+  --border-strong: #43454d;
+  --text: #e8e8ea;
+  --muted: #b4b5bb;
+  --dim: #9fa1a9;
+  --accent: #145aff;
+  --accent-2: #2a6aff;
+  --accent-text: #7ea4ff;
+  --accent-ink: #ffffff;
+  --accent-dim: rgba(20, 90, 255, .14);
+  --focus-ring: var(--text);
+  --radius: 3px;
+  --radius-sm: 2px;
+  --fast: .12s;
+  --ease: cubic-bezier(.16, 1, .3, 1);
+  --font-ui: 'IBM Plex Sans', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { width: 340px; margin: 0; background: var(--bg); color: var(--text); font: 13px/1.45 var(--font-ui); -webkit-font-smoothing: antialiased; }
+:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+button { font: inherit; color: inherit; }
+
+.bar { display: flex; align-items: center; gap: 9px; height: 44px; padding: 0 14px; border-bottom: 1px solid var(--border); }
+.title { font-weight: 700; font-size: .95rem; }
+main { display: grid; gap: 16px; padding: 14px; }
+section { display: grid; gap: 6px; }
+.label { margin: 0; font-size: .68rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--dim); }
+.hint { display: block; margin: 0; font-size: .78rem; color: var(--dim); }
+.pad { padding: 10px 12px; }
+.fine { padding: 10px 14px 14px; font-size: .72rem; color: var(--dim); border-top: 1px solid var(--border); }
+
+.panel { background: var(--surface); border: 1px solid var(--border); }
+.row { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 6px 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
+.row:last-child { border-bottom: 0; }
+.row:hover { background: var(--surface-hover); }
+.row.off { cursor: default; color: var(--dim); }
+.row.off:hover { background: none; }
+.switch:disabled { opacity: .4; cursor: default; }
+.text { display: grid; flex: 1; min-width: 0; }
+.name { font-weight: 600; }
+
+.order { display: flex; gap: 2px; }
+.icon { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: var(--radius); background: none; color: var(--muted); cursor: pointer; transition: background-color var(--fast), color var(--fast); }
+.icon:hover { background: var(--border); color: var(--text); }
+.icon:active { opacity: .6; transition: none; }
+.icon:disabled { opacity: .3; cursor: default; background: none; }
+.icon svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Switch: 36×20 track, 14px knob, an "on" tick so on reads as on (cyex-app). */
+.switch { position: relative; flex: none; width: 36px; height: 20px; margin: 0; appearance: none; cursor: pointer; border-radius: 999px;
+  background: var(--border-strong); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--text) 40%, transparent); transition: background-color var(--fast); }
+.switch::before { content: ''; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--text);
+  transition: translate var(--fast) var(--ease), background-color var(--fast); }
+.switch::after { content: ''; position: absolute; top: 6px; left: 9px; width: 2px; height: 8px; background: var(--accent-ink); opacity: 0; }
+.switch:checked { background: var(--accent); }
+.switch:checked::before { translate: 16px 0; background: var(--accent-ink); }
+.switch:checked::after { opacity: 1; }
+
+.seg { display: flex; gap: 2px; padding: 2px; background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius); }
+.seg button { flex: 1; height: 26px; padding: 0 10px; border: 0; border-radius: var(--radius-sm); background: none; color: var(--muted); font-size: .8rem; font-weight: 600; cursor: pointer; }
+.seg button:hover { color: var(--text); }
+.seg button[aria-pressed='true'] { background: var(--accent-dim); color: var(--accent-text); }
+
+@media (prefers-reduced-motion: reduce) { * { transition-duration: 0s !important; } }
