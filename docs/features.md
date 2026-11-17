@@ -49,6 +49,7 @@ The popup's "Check this page's selectors" (on any Twitch or Kick page) and the k
 | Never highlight (bots) | F D | yes | yes | S | M | built (highlights) |
 | Ignore words: hide the message or swap the words | 7 F B D | yes | yes | M | L | built (highlights) |
 | Hide people locally | 7 F B D | yes | yes | S | L | built (highlights) |
+| Hide the messages of people you blocked on the site, from the site's own blocked list | - | no | no | M | S | not built: neither site puts the blocked list in the page. Twitch keeps it behind its signed-in GraphQL API (needs the account's auth token, which an extension must not lift out of the page), Kick behind its session API; both would also be undocumented endpoints we can't check from here. "Hide people locally" (Ignores) does the job with a list of your own, and a block on the site hides the person's messages there already where the site supports it. To revisit if either site publishes a blocked-users call that works with the page's own session, or the browser's own cookies without new permissions |
 | Badge rules, "sent from" rules, look-alike letters | F D | partly | no | M | S | later: badge names need Twitch's badge data per message |
 | Mentions tab / custom feeds, desktop pop-ups, taskbar flash | D | no | no | L | S | later: an extension has no second chat pane; notifications need another permission |
 
