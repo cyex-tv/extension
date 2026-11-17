@@ -9,6 +9,10 @@ export interface Site {
   platform: Platform;
   /** Chat message elements under `root` (or `root` itself). */
   messages(root: ParentNode): Element[];
+  /** CSS selector matching one chat message (for styles that apply to every line). */
+  messageSelector: string;
+  /** Where a timestamp goes: before this element (the badges and name). */
+  timeSlot(message: Element): Element | null;
   /** The element holding a message's text and emotes. */
   body(message: Element): Element | null;
   /** The sender's platform user ID, once the page script has tagged the message. */

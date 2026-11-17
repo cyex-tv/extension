@@ -12,6 +12,11 @@ let cached: { login: string; channel: Channel | null } | null = null;
 
 export const kick: Site = {
   platform: 'kick',
+  messageSelector: MESSAGE,
+  // Before the block with the name (Kick's own clock, when it shows one, stays ahead of ours).
+  timeSlot(message) {
+    return message.querySelector('button[title]')?.parentElement ?? null;
+  },
   messages(root) {
     const out = root instanceof Element && root.matches(MESSAGE) ? [root] : [];
     return out.concat([...root.querySelectorAll(MESSAGE)]);

@@ -1,10 +1,12 @@
 // Every chat feature, in the order they see a message. A feature group adds its factory here.
+// Ignores come first: a hidden message skips everything after it.
 import { autoClaim } from './cleanup/auto-claim';
 import { hideClutter } from './cleanup/hide-clutter';
 import { richTooltips } from './cleanup/rich-tooltips';
-import type { Feature } from './types';
 import { highlights, ignores } from './highlights';
+import { LOOKS } from './looks/index';
+import type { Feature } from './types';
 
 export type FeatureFactory = () => Feature;
 
-export const FEATURES: FeatureFactory[] = [ignores, highlights, hideClutter, autoClaim, richTooltips];
+export const FEATURES: FeatureFactory[] = [ignores, highlights, ...LOOKS, hideClutter, autoClaim, richTooltips];

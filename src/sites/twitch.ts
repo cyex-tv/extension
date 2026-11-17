@@ -8,6 +8,10 @@ const MESSAGE = '[data-a-target="chat-line-message"]';
 
 export const twitch: Site = {
   platform: 'twitch',
+  messageSelector: MESSAGE,
+  timeSlot(message) {
+    return message.querySelector('.chat-line__username-container, .chat-line__username');
+  },
   messages(root) {
     const out = root instanceof Element && root.matches(MESSAGE) ? [root] : [];
     return out.concat([...root.querySelectorAll(MESSAGE)]);
