@@ -44,7 +44,7 @@ function render() {
   const cosmetics = $('#cosmetics');
   cosmetics.replaceChildren(
     ...(Object.keys(COSMETIC_LABEL) as (keyof Settings['cosmetics'])[]).map((id) => {
-      return toggle(COSMETIC_LABEL[id], settings.cosmetics[id], (on) => update(setCosmetics(settings, id, on)), id === '7tv' ? 'Badges and name paints' : 'Twitch');
+      return toggle(COSMETIC_LABEL[id], settings.cosmetics[id], (on) => update(setCosmetics(settings, id, on)), id === '7tv' || id === 'cyextv' ? 'Badges and name paints' : 'Twitch');
     }),
   );
 

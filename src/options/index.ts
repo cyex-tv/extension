@@ -121,7 +121,7 @@ function providers(): HTMLElement {
 function cosmetics(): HTMLElement {
   const panel = el('div', { className: 'panel' });
   for (const id of Object.keys(COSMETIC_LABEL) as (keyof Settings['cosmetics'])[]) {
-    panel.append(toggle(COSMETIC_LABEL[id], settings.cosmetics[id], (on) => update(setCosmetics(settings, id, on)), id === '7tv' ? 'Badges and name paints' : 'Twitch'));
+    panel.append(toggle(COSMETIC_LABEL[id], settings.cosmetics[id], (on) => update(setCosmetics(settings, id, on)), id === '7tv' || id === 'cyextv' ? 'Badges and name paints' : 'Twitch'));
   }
   return panel;
 }
