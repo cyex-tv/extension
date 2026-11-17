@@ -12,6 +12,8 @@ import { EMOTE_CLASS, STYLES, renderEmotes } from '../chat/render';
 import { PROVIDERS } from '../providers';
 import { allowsPersonal, personal } from '../providers/cyextv';
 import type { EmoteSet, FetchJson, ProviderId } from '../providers/types';
+import { FEATURES } from '../features/index';
+import { type Feature, type FeatureContext, type Other, shouldRun } from '../features/types';
 import type { Settings } from '../settings';
 import type { Channel, Site } from '../sites/index';
 
@@ -30,6 +32,10 @@ export type AppDeps = {
   now?: () => number;
   /** Live updates; tests pass a fake socket, or `null` for none. */
   sockets?: SocketFactory | null;
+  /** Per-device storage for features (favourites, usage); null in tests. */
+  local?: ExtStorageArea | null;
+  /** The chat features to run; the full list by default. */
+  features?: Feature[];
 };
 
 export class App {
@@ -55,6 +61,49 @@ export class App {
     this.now = deps.now ?? Date.now;
     this.index = new EmoteIndex(deps.settings.order);
     this.live = deps.sockets === null ? null : new ChannelLive(deps.sockets);
+    this.allFeatures = deps.features ?? FEATURES.map((f) => f());
+  }
+
+  private allFeatures: Feature[];
+  /** The features running now (switched on, not left to another extension). */
+  private running: Feature[] = [];
+
+  /** Other emote extensions found on the page. */
+  others(): Other[] {
+    return (this.doc.documentElement.dataset.cyextvOthers ?? '').split(',').filter((o): o is Other => o === '7tv' || o === 'bttv' || o === 'ffz');
+  }
+
+  private featureContext(): FeatureContext {
+    return {
+      doc: this.doc,
+      site: this.deps.site,
+      settings: this.settings,
+      index: this.index,
+      now: this.now,
+      channel: () => this.channel,
+      others: () => this.others(),
+      local: this.deps.local ?? null,
+    };
+  }
+
+  /** (Re)starts the features that should run, given the settings and the other extensions. */
+  private startFeatures() {
+    for (const f of this.running) f.stop?.();
+    const others = this.others();
+    this.running = this.allFeatures.filter((f) => shouldRun(f, this.settings, others));
+    const ctx = this.featureContext();
+    for (const f of this.running) {
+      try {
+        f.start?.(ctx);
+      } catch (e) {
+        console.warn('[cyex.tv]', f.id, e);
+      }
+    }
+  }
+
+  /** IDs of the features running now. */
+  features(): string[] {
+    return this.running.map((f) => f.id);
   }
 
   get settings(): Settings {
@@ -230,13 +279,23 @@ export class App {
   process(message: Element) {
     if (this.disabledHere()) return;
     const sender = this.deps.site.sender(message) ?? undefined;
+    const body = this.deps.site.body(message);
+    // Features see each message once (a message is processed again when its sender's personal
+    // emotes or looks arrive).
+    const fresh = !message.hasAttribute('data-cyextv-seen');
+    const info = { sender: sender ?? null, login: this.deps.site.login(message), text: body ? textOf(body) : '' };
+    if (fresh) {
+      message.setAttribute('data-cyextv-seen', '');
+      for (const f of this.running) {
+        if (f.prepare && guard(f, () => f.prepare!(message, info)) === false) return;
+      }
+    }
     if (sender) {
       this.placeBadges(message, sender);
       this.applyPaint(message, sender);
     }
-    const body = this.deps.site.body(message);
-    if (!body) return;
-    renderEmotes(body, (w) => this.index.find(w, sender), this.deps.site.skip, this.settings);
+    if (body) renderEmotes(body, (w) => this.index.find(w, sender), this.deps.site.skip, this.settings);
+    if (fresh) for (const f of this.running) if (f.message) guard(f, () => f.message!(message, info));
     if (sender && this.allowPersonal) this.wantPersonal(sender);
   }
 
@@ -270,6 +329,7 @@ export class App {
 
   /** Starts watching chat: existing messages now, new ones as they arrive. */
   start() {
+    this.startFeatures();
     const style = this.doc.createElement('style');
     style.id = 'cyextv-styles';
     style.textContent = STYLES;
@@ -324,6 +384,7 @@ export class App {
     this.restarting = true;
     queueMicrotask(async () => {
       this.channel = null;
+      this.startFeatures();
       await this.loadGlobals();
       await this.syncChannel();
       this.restarting = false;
@@ -364,11 +425,36 @@ export class App {
   };
 
   stop() {
+    for (const f of this.running) f.stop?.();
+    this.running = [];
     this.live?.stop();
     this.observer?.disconnect();
     if (this.badgeTimer) clearInterval(this.badgeTimer);
     this.doc.removeEventListener('mouseover', this.hover);
     this.doc.removeEventListener('mouseout', this.hover);
     this.doc.removeEventListener('copy', this.copy);
+  }
+}
+
+/** A message body's text as typed: drawn emotes count as their names. */
+export function textOf(body: Element): string {
+  let out = '';
+  const walk = (n: Node) => {
+    if (n instanceof Element && n.classList.contains(EMOTE_CLASS)) out += (n as HTMLElement).dataset.text ?? '';
+    else if (n instanceof HTMLImageElement) out += n.alt;
+    else if (n.nodeType === 3) out += n.nodeValue ?? '';
+    else n.childNodes.forEach(walk);
+  };
+  walk(body);
+  return out.replace(/\s+/g, ' ').trim();
+}
+
+/** Runs one feature's hook; a feature that throws never stops chat. */
+function guard<T>(f: Feature, run: () => T): T | undefined {
+  try {
+    return run();
+  } catch (e) {
+    console.warn('[cyex.tv]', f.id, e);
+    return undefined;
   }
 }

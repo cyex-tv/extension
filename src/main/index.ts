@@ -3,10 +3,11 @@
 // It copies what the content script needs onto `data-cyextv-*` attributes and does nothing
 // else: no network, no changes to the page's behaviour.
 //
-// - each chat message: `data-cyextv-uid` (the sender's platform user ID);
+// - each chat message: `data-cyextv-uid` (the sender's platform user ID), `data-cyextv-first`
+//   (Twitch: the sender's first message in the channel);
 // - <html>: `data-cyextv-channel` (Twitch's channel ID), `data-cyextv-others` (other emote
 //   extensions found: 7tv, bttv, ffz).
-import { kickSender, twitchChannelId, twitchSender } from './react';
+import { kickSender, twitchChannelId, twitchFirst, twitchSender } from './react';
 
 const TWITCH_MESSAGE = '[data-a-target="chat-line-message"]';
 const KICK_MESSAGE = '#chatroom-messages [data-index]';
@@ -17,6 +18,7 @@ const html = document.documentElement;
 function tag(el: Element) {
   if (el.hasAttribute('data-cyextv-uid')) return;
   const id = kick ? kickSender(el) : twitchSender(el);
+  if (!kick && twitchFirst(el)) el.setAttribute('data-cyextv-first', '');
   if (id) el.setAttribute('data-cyextv-uid', id);
 }
 

@@ -17,8 +17,9 @@ const ENTRIES = {
   main: 'src/main/index.ts',
   background: 'src/background/index.ts',
   popup: 'src/popup/index.ts',
+  options: 'src/options/index.ts',
 };
-const STATIC = ['src/popup/popup.html', 'src/popup/popup.css'];
+const STATIC = ['src/popup/popup.html', 'src/popup/popup.css', 'src/options/options.html', 'src/options/options.css'];
 const targets = process.argv.slice(2).filter((t) => t === 'chrome' || t === 'firefox');
 
 for (const target of targets.length ? targets : ['chrome', 'firefox']) {

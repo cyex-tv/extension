@@ -1,0 +1,38 @@
+/* The settings page, on top of popup.css's tokens and controls: a sidebar of pages like cyex
+   deck's settings, and a column of sections. */
+body.options { width: auto; min-height: 100vh; display: grid; grid-template-rows: auto 1fr auto; }
+.sub { color: var(--dim); font-size: .85rem; }
+.layout { display: grid; grid-template-columns: 200px minmax(0, 720px); gap: 24px; padding: 16px; }
+#nav { display: grid; align-content: start; gap: 2px; position: sticky; top: 16px; }
+.nav-item { display: flex; align-items: center; height: 32px; padding: 0 10px; border: 0; border-radius: var(--radius); background: none; color: var(--muted); text-align: left; cursor: pointer; }
+.nav-item:hover { background: var(--surface-hover); color: var(--text); }
+.nav-item[aria-current='page'] { background: var(--accent-dim); color: var(--accent-text); }
+.nav-item[aria-current='page'] .name { font-weight: 600; }
+#page { display: grid; align-content: start; gap: 20px; }
+.page-head h1 { margin: 0 0 2px; font-size: 1.15rem; }
+.stack { display: grid; gap: 8px; }
+.row.static { cursor: default; }
+.row.static:hover { background: none; }
+.block { display: grid; gap: 8px; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); }
+.input { height: 30px; padding: 0 8px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--bg); color: var(--text); font: inherit; min-width: 0; }
+.input:hover { border-color: var(--dim); }
+.input.num { width: 76px; }
+.unit { display: inline-flex; align-items: center; gap: 6px; color: var(--dim); }
+.chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.chips:empty { display: none; }
+.chip { display: inline-flex; align-items: center; gap: 2px; height: 26px; padding-left: 8px; border: 1px solid var(--border-strong); border-radius: var(--radius); font-size: .8rem; overflow-wrap: anywhere; }
+.chip .icon { width: 22px; height: 22px; }
+.rules { display: grid; background: var(--surface); border: 1px solid var(--border); }
+.rule { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.rule:last-child { border-bottom: 0; }
+.rule > .input { flex: 1 1 180px; }
+.rule.new > .input { flex: 1; }
+.check { display: inline-flex; align-items: center; gap: 5px; font-size: .8rem; color: var(--muted); cursor: pointer; }
+.check input { accent-color: var(--accent); margin: 0; }
+.colour { display: inline-flex; align-items: center; gap: 2px; }
+.swatch { width: 30px; height: 26px; padding: 0 2px; border: 1px solid var(--border-strong); border-radius: var(--radius); background: var(--bg); cursor: pointer; }
+.swatch.unset { opacity: .45; }
+@media (max-width: 640px) {
+  .layout { grid-template-columns: 1fr; }
+  #nav { position: static; grid-auto-flow: column; overflow-x: auto; }
+}

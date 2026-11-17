@@ -4,6 +4,8 @@
 // the broadcaster's user ID.
 import { type Channel, type Site, loginFromPath } from './index';
 
+// Every Kick selector the extension uses is in this file.
+
 const MESSAGE = '#chatroom-messages [data-index]';
 
 let cached: { login: string; channel: Channel | null } | null = null;
@@ -23,6 +25,9 @@ export const kick: Site = {
   },
   sender(message) {
     return message.getAttribute('data-cyextv-uid');
+  },
+  login(message) {
+    return message.querySelector('button[title]')?.getAttribute('title')?.toLowerCase() ?? null;
   },
   async channel(): Promise<Channel | null> {
     const login = loginFromPath(location.pathname);
@@ -45,5 +50,31 @@ export const kick: Site = {
   },
   nameElement(message) {
     return message.querySelector<HTMLElement>('button[title]');
+  },
+  // Kick keeps the signed-in user in its app state only; "Your other names" covers it.
+  self() {
+    return null;
+  },
+  chatList(doc) {
+    return doc.querySelector('#chatroom-messages');
+  },
+  chatInput(doc) {
+    return doc.querySelector<HTMLElement>('[data-testid="chat-input"], #message-input');
+  },
+  inputButtonSlot(doc) {
+    return this.chatInput(doc)?.parentElement?.nextElementSibling ?? null;
+  },
+  deletedNotice(message) {
+    return message.querySelector('[data-cyextv-deleted], .line-through');
+  },
+  isFirst(message) {
+    return message.hasAttribute('data-cyextv-first');
+  },
+  clutter: {},
+  claimButton() {
+    return null;
+  },
+  userCard() {
+    return null;
   },
 };

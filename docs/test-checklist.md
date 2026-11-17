@@ -35,9 +35,26 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 - [ ] "Animations off" shows still pictures; "on hover" animates only the emote under the pointer.
 - [ ] Switching the extension off for a channel leaves that chat untouched.
 
+## Settings page
+
+- [ ] "All settings" in the popup opens the settings page in a tab; its sidebar shows Chat, Emotes and badges, Highlights, Ignores, Usercard, Clean up, Channels.
+- [ ] A change on the settings page applies to open chats without a reload, and survives closing the browser.
+- [ ] Rules (Highlights → Words, Ignores → Words) can be added, edited and removed; an empty pattern isn't saved.
+
+## Chat looks
+
+## Highlights and ignores
+
+## Writing
+
+## Usercard and shortcuts
+
+## Clean up
+
 ## Coexistence
 
 - [ ] With the 7TV, BTTV or FFZ extension installed, that provider's emotes are left to it by default (no doubled pictures); turning on "draw anyway" brings them back.
+- [ ] With any of them installed, the features they also have (emote menu, Tab completion, deleted messages, name colours) are left to them: one emote menu button, one Tab handler.
 
 ## Robustness
 
