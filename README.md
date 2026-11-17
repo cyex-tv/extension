@@ -5,7 +5,29 @@ A browser extension (Chrome and Firefox, Manifest V3) that shows emotes, badges 
 - Emotes: cyex.tv, 7TV, BTTV, FFZ
 - Badges and paints: cyex deck supporter badges, 7TV, BTTV, FFZ, and later cyex.tv's own
 
-Status: planned for Phase 8. See the plan in [cyex-tv/platform](https://github.com/cyex-tv/platform).
+Status: Phase 8 of the plan in [cyex-tv/platform](https://github.com/cyex-tv/platform), in progress. This first part has the providers, the message tokenizer, settings and the background fetcher; drawing in chat comes next.
+
+## Build
+
+Node 22.12 or newer.
+
+```
+npm ci
+npm run build        # dist/chrome and dist/firefox
+npm test
+npm run check        # TypeScript
+npm run licences     # the licence allow-list
+```
+
+Load `dist/chrome` with "Load unpacked" on `chrome://extensions` (developer mode), or `dist/firefox/manifest.json` from `about:debugging` → "Load Temporary Add-on".
+
+## Layout
+
+- `src/providers/`: one module per emote provider, public APIs only (cyex.tv, 7TV v3, BTTV v3, FFZ v1).
+- `src/chat/`: which emote a word means (`EmoteIndex`) and splitting a message into text and emotes (`tokenize`).
+- `src/background/`: fetches for content scripts, limited to the providers' API hosts, cached and revalidated with ETags.
+- `src/content/`: the content script on Twitch and Kick.
+- `scripts/`: the build, the manifests for each browser, the icons (drawn in code), the licence check.
 
 Licence: [AGPL-3.0](LICENSE).
 

@@ -1,0 +1,22 @@
+{
+  "name": "cyex-tv-extension",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Emotes, badges and name paints in Twitch and Kick chat",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "licences": "node scripts/licences.mjs"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "vite": "7.3.7",
+    "vitest": "3.2.7"
+  },
+  "engines": {
+    "node": ">=22.12"
+  }
+}
