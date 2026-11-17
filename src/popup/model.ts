@@ -5,6 +5,7 @@ import { loginFromPath } from '../sites/index';
 
 export const PROVIDER_LABEL: Record<ProviderId, string> = { cyextv: 'cyex.tv', '7tv': '7TV', bttv: 'BetterTTV', ffz: 'FrankerFaceZ' };
 export const COSMETIC_LABEL: Record<keyof Settings['cosmetics'], string> = {
+  cyextv: 'cyex.tv',
   cyexdeck: 'cyex deck supporters',
   '7tv': '7TV',
   bttv: 'BetterTTV',

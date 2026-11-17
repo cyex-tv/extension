@@ -3,7 +3,7 @@
 A browser extension (Chrome and Firefox, Manifest V3) that shows emotes, badges and name paints in Twitch and Kick chat. Each provider can be turned off on its own.
 
 - Emotes: cyex.tv, 7TV, BTTV, FFZ
-- Badges and paints: cyex deck supporter badges, 7TV, BTTV, FFZ, and later cyex.tv's own
+- Badges and paints: cyex.tv's own (badges and name paints from api.cyex.tv, live), cyex deck supporter badges, 7TV, BTTV, FFZ
 - Chat features, each with its own switch: see [docs/features.md](docs/features.md) for what's built and what's later
 
 Status: Phase 8 of the plan in [cyex-tv/platform](https://github.com/cyex-tv/platform), in progress. This first part has the providers, the message tokenizer, settings and the background fetcher; drawing in chat comes next.

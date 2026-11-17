@@ -8,6 +8,8 @@ import { ChannelLive } from '../live/sources';
 import type { SocketFactory } from '../live/socket';
 import { type BadgeMap, type BadgeProvider, badgeTooltip, bttvBadges, cyexDeck, ffzBadges } from '../cosmetics/badges';
 import { SeventvCosmetics } from '../cosmetics/seventv';
+import { CyexCosmetics, type PaintCss, USERS_MAX, loadCatalog, lookupUsers, paintCss } from '../cosmetics/cyextv';
+import { CosmeticsLive } from '../live/cosmetics';
 import { EMOTE_CLASS, STYLES, renderEmotes } from '../chat/render';
 import { PROVIDERS } from '../providers';
 import { allowsPersonal, personal } from '../providers/cyextv';
@@ -23,6 +25,12 @@ export const BADGE_REFRESH_MS = 30 * 60_000;
 /** Badge lists fetched on a timer; 7TV's arrive over its socket instead. */
 const BADGE_SOURCES: Partial<Record<BadgeProvider, (f: FetchJson) => Promise<BadgeMap>>> = { cyexdeck: cyexDeck, bttv: bttvBadges, ffz: ffzBadges };
 const PERSONAL_TTL_MS = 10 * 60_000;
+/** cyex.tv cosmetics: chatters are asked about in one batch after this quiet time, and an answer stands this long. */
+const LOOKS_BATCH_MS = 250;
+const LOOKS_TTL_MS = 10 * 60_000;
+/** The catalog is revalidated (ETag) this often as well as on events. */
+export const CATALOG_REFRESH_MS = 30 * 60_000;
+const PAINT_PROPS = ['background-image', 'background-clip', '-webkit-background-clip', 'color', 'filter', 'background-size', 'background-repeat'];
 
 /** When each message first reached us (0: it was already on the page at load); shared across Apps so a restart keeps the times. */
 const arrived = new WeakMap<Element, number>();
@@ -56,6 +64,13 @@ export class App {
   private live: ChannelLive | null;
   /** 7TV badges and paints seen in the current channel. */
   private seventvLooks: SeventvCosmetics | null = null;
+  /** cyex.tv badges and paints: the catalog and the chatters seen. */
+  private cyexLooks: CyexCosmetics | null = null;
+  private cyexLive: CosmeticsLive | null = null;
+  private looksSeen = new Map<string, number>();
+  private looksQueue = new Set<string>();
+  private looksTimer: ReturnType<typeof setTimeout> | null = null;
+  private catalogTimer: ReturnType<typeof setInterval> | null = null;
   private doc: Document;
   /** Set by stop(): queued work (frames, timers, awaits) checks it and quits. */
   private stopped = false;
@@ -207,8 +222,9 @@ export class App {
 
   /** Badge providers switched on that apply on this site, in the order they show. */
   badgeProviders(): BadgeProvider[] {
-    if (this.deps.site.platform !== 'twitch') return [];
-    return (['cyexdeck', '7tv', 'bttv', 'ffz'] as const).filter((p) => (p === '7tv' ? this.seventvCosmeticsOn() : this.settings.cosmetics[p]));
+    const all = (['cyextv', 'cyexdeck', '7tv', 'bttv', 'ffz'] as const).filter((p) => (p === '7tv' ? this.seventvCosmeticsOn() : this.settings.cosmetics[p]));
+    // cyex.tv cosmetics are keyed by platform and user ID, so they work on Kick too.
+    return this.deps.site.platform === 'twitch' ? all : all.filter((p) => p === 'cyextv');
   }
 
   /** Loads every enabled badge provider's list; a failing one keeps what it had. */
@@ -223,6 +239,10 @@ export class App {
   /** The badges a chatter shows, provider by provider. */
   badgesOf(userId: string) {
     return this.badgeProviders().flatMap((p) => {
+      if (p === 'cyextv') {
+        const b = this.cyexLooks?.badgeOf(userId);
+        return b ? [b] : [];
+      }
       if (p === '7tv') {
         const b = this.seventvLooks?.badgeOf(userId);
         return b ? [b] : [];
@@ -231,27 +251,48 @@ export class App {
     });
   }
 
-  /** A 7TV paint on the chatter's name, or none (taking back one that was there). */
+  /** The paint a chatter shows: cyex.tv's when they have one, else 7TV's. */
+  private paintFor(sender: string): { id: string; name: string; source: string; css: PaintCss } | null {
+    const cyex = this.settings.cosmetics.cyextv ? this.cyexLooks?.paintOf(sender) : undefined;
+    const css = cyex ? paintCss(cyex, { animated: this.settings.animations === 'on' }) : null;
+    if (cyex && css) return { id: `cyextv:${cyex.id}`, name: cyex.name, source: 'cyex.tv', css };
+    const paint = this.seventvCosmeticsOn() ? this.seventvLooks?.paintOf(sender) : undefined;
+    if (!paint) return null;
+    return {
+      id: paint.id,
+      name: paint.name,
+      source: '7TV',
+      css: { backgroundImage: paint.backgroundImage, backgroundSize: 'cover', backgroundRepeat: '', filter: paint.filter, ...(paint.color ? { color: paint.color } : {}) },
+    };
+  }
+
+  private clearPaint(name: HTMLElement) {
+    for (const p of PAINT_PROPS) name.style.removeProperty(p);
+    delete name.dataset.cyextvPaint;
+  }
+
+  /** A paint (cyex.tv's or 7TV's) on the chatter's name, or none (taking back one that was there). */
   private applyPaint(message: Element, sender: string) {
     const name = this.deps.site.nameElement(message);
     if (!name) return;
-    const paint = this.seventvCosmeticsOn() ? this.seventvLooks?.paintOf(sender) : undefined;
+    const paint = this.paintFor(sender);
     if ((name.dataset.cyextvPaint ?? '') === (paint?.id ?? '')) return;
-    for (const p of ['background-image', 'background-clip', '-webkit-background-clip', 'color', 'filter', 'background-size']) name.style.removeProperty(p);
-    delete name.dataset.cyextvPaint;
+    this.clearPaint(name);
     if (!paint) return;
     // The paint owns the colour now; the readable-colours feature must not put an old one back.
     delete name.dataset.cyextvReadable;
     name.dataset.cyextvPaint = paint.id;
-    if (paint.backgroundImage) {
-      name.style.backgroundImage = paint.backgroundImage;
-      name.style.setProperty('background-size', 'cover');
+    const css = paint.css;
+    if (css.backgroundImage) {
+      name.style.backgroundImage = css.backgroundImage;
+      name.style.setProperty('background-size', css.backgroundSize);
+      if (css.backgroundRepeat) name.style.setProperty('background-repeat', css.backgroundRepeat);
       name.style.setProperty('-webkit-background-clip', 'text');
       name.style.setProperty('background-clip', 'text');
       name.style.color = 'transparent';
-    } else if (paint.color) name.style.color = paint.color;
-    if (paint.filter) name.style.filter = paint.filter;
-    if (this.settings.tooltips) name.title = `${paint.name}\n7TV paint`;
+    } else if (css.color) name.style.color = css.color;
+    if (css.filter) name.style.filter = css.filter;
+    if (this.settings.tooltips) name.title = `${paint.name}\n${paint.source} paint`;
   }
 
   /** A chatter's badge or paint changed: redraw those parts of their messages on screen. */
@@ -261,6 +302,9 @@ export class App {
       this.doc.querySelectorAll(`[data-cyextv-uid="${id}"]`).forEach((m) => {
         m.querySelector('.cyextv-badges')?.remove();
         this.placeBadges(m, id);
+        // A cyex.tv paint can change under the same ID, so it is drawn again from scratch.
+        const name = this.deps.site.nameElement(m);
+        if (name?.dataset.cyextvPaint?.startsWith('cyextv:')) this.clearPaint(name);
         this.applyPaint(m, id);
       });
     }
@@ -275,8 +319,9 @@ export class App {
     wrap.className = 'cyextv-badges';
     for (const b of list) {
       const img = this.doc.createElement('img');
-      img.src = b.urls[0];
-      img.srcset = `${b.urls[0]} 1x, ${b.urls[1]} 2x, ${b.urls[2]} 4x`;
+      const urls = b.stills && this.settings.animations !== 'on' ? b.stills : b.urls;
+      img.src = urls[0];
+      img.srcset = `${urls[0]} 1x, ${urls[1]} 2x, ${urls[2]} 4x`;
       img.alt = b.title;
       img.height = 18;
       img.decoding = 'async';
@@ -316,6 +361,7 @@ export class App {
     if (body) renderEmotes(body, (w) => this.index.find(w, sender), this.deps.site.skip, this.settings);
     if (fresh) for (const f of this.running) if (f.message) guard(f, () => f.message!(message, info));
     if (sender && this.allowPersonal) this.wantPersonal(sender);
+    if (sender && this.cyexLooks) this.wantLooks(sender);
   }
 
   private wantPersonal(userId: string) {
@@ -324,6 +370,78 @@ export class App {
     this.personalSeen.set(userId, this.now());
     this.personalQueue.add(userId);
     this.personalTimer ??= setTimeout(() => void this.flushPersonal(), PERSONAL_BATCH_MS);
+  }
+
+  /** Queues a chatter for cyex.tv's badge and paint lookup, unless asked about recently. */
+  private wantLooks(userId: string) {
+    if (!/^\d{1,20}$/.test(userId)) return;
+    const seen = this.looksSeen.get(userId);
+    if (seen !== undefined && this.now() - seen < LOOKS_TTL_MS) return;
+    this.looksSeen.set(userId, this.now());
+    this.looksQueue.add(userId);
+    this.looksTimer ??= setTimeout(() => void this.flushLooks(), LOOKS_BATCH_MS);
+  }
+
+  /** Looks up the queued chatters, 100 at a time, and redraws the ones whose look arrived. */
+  async flushLooks() {
+    this.looksTimer = null;
+    const looks = this.cyexLooks;
+    if (this.stopped || !looks) return;
+    const ids = [...this.looksQueue];
+    this.looksQueue.clear();
+    for (let i = 0; i < ids.length; i += USERS_MAX) {
+      const batch = ids.slice(i, i + USERS_MAX);
+      try {
+        const found = await lookupUsers(this.deps.fetch, looks.platform, batch);
+        if (this.stopped || this.cyexLooks !== looks) return;
+        const changed = looks.setUsers(batch, found);
+        this.cyexLive?.watchUsers(batch);
+        this.relook(changed);
+      } catch {
+        // Try these chatters again on their next message.
+        for (const id of batch) this.looksSeen.delete(id);
+      }
+    }
+  }
+
+  /** (Re)loads the catalog; `fresh` revalidates it. A failure keeps what we had. */
+  async loadCatalog(fresh = false) {
+    const looks = this.cyexLooks;
+    if (!looks) return;
+    try {
+      const catalog = await loadCatalog(this.deps.fetch, fresh);
+      if (!catalog || this.stopped || this.cyexLooks !== looks) return;
+      const known = looks.setCatalog(catalog);
+      // Chatters on screen before the catalog arrived show nothing yet; draw them now.
+      const onScreen = [...this.doc.querySelectorAll<HTMLElement>('[data-cyextv-uid]')].map((m) => m.dataset.cyextvUid ?? '');
+      this.relook([...new Set([...known, ...onScreen])]);
+    } catch {
+      // The next refresh or event tries again.
+    }
+  }
+
+  /** Starts cyex.tv cosmetics: the catalog, and live updates from the events socket. */
+  private startCyexLooks() {
+    if (!this.settings.cosmetics.cyextv) return;
+    const looks = new CyexCosmetics(this.deps.site.platform);
+    this.cyexLooks = looks;
+    void this.loadCatalog();
+    this.catalogTimer = setInterval(() => void this.loadCatalog(true), CATALOG_REFRESH_MS);
+    if (this.deps.sockets === null) return;
+    this.cyexLive = new CosmeticsLive(
+      looks.platform,
+      {
+        event: (type, data) => this.relook(looks.handle(type, data)),
+        resync: () => {
+          // Events may have been missed: ask for the catalog and every chatter again.
+          this.looksSeen.clear();
+          void this.loadCatalog(true);
+          for (const m of this.doc.querySelectorAll<HTMLElement>('[data-cyextv-uid]')) if (m.dataset.cyextvUid) this.wantLooks(m.dataset.cyextvUid);
+        },
+      },
+      this.deps.sockets,
+    );
+    this.cyexLive.start();
   }
 
   async flushPersonal() {
@@ -357,6 +475,7 @@ export class App {
     style.textContent = STYLES;
     if (!this.doc.getElementById(style.id)) this.doc.head.append(style);
 
+    this.startCyexLooks();
     this.doc.addEventListener('mouseover', this.hover, { passive: true });
     this.doc.addEventListener('mouseout', this.hover, { passive: true });
     this.doc.addEventListener('copy', this.copy);
@@ -459,14 +578,20 @@ export class App {
     if (this.personalTimer) clearTimeout(this.personalTimer);
     this.personalTimer = null;
     this.personalQueue.clear();
+    if (this.looksTimer) clearTimeout(this.looksTimer);
+    this.looksTimer = null;
+    this.looksQueue.clear();
+    this.looksSeen.clear();
+    if (this.catalogTimer) clearInterval(this.catalogTimer);
+    this.catalogTimer = null;
+    this.cyexLive?.stop();
+    this.cyexLive = null;
+    this.cyexLooks = null;
     for (const f of this.running) f.stop?.();
     this.running = [];
     // Our badges and paints go too, so a new App places them again under its settings.
     this.doc.querySelectorAll('.cyextv-badges').forEach((n) => n.remove());
-    this.doc.querySelectorAll<HTMLElement>('[data-cyextv-paint]').forEach((n) => {
-      for (const p of ['background-image', 'background-clip', '-webkit-background-clip', 'color', 'filter', 'background-size']) n.style.removeProperty(p);
-      delete n.dataset.cyextvPaint;
-    });
+    this.doc.querySelectorAll<HTMLElement>('[data-cyextv-paint]').forEach((n) => this.clearPaint(n));
     this.live?.stop();
     this.observer?.disconnect();
     if (this.badgeTimer) clearInterval(this.badgeTimer);

@@ -82,7 +82,7 @@ export type ChatSettings = {
 
 export type Settings = {
   emotes: Record<ProviderId, boolean>;
-  cosmetics: { cyexdeck: boolean; '7tv': boolean; bttv: boolean; ffz: boolean };
+  cosmetics: { cyextv: boolean; cyexdeck: boolean; '7tv': boolean; bttv: boolean; ffz: boolean };
   /** Which provider's emote wins a shared name; earlier wins. */
   order: ProviderId[];
   animations: Animations;
@@ -130,7 +130,7 @@ export const CHAT_DEFAULTS: ChatSettings = {
 
 export const DEFAULTS: Settings = {
   emotes: { cyextv: true, '7tv': true, bttv: true, ffz: true },
-  cosmetics: { cyexdeck: true, '7tv': true, bttv: true, ffz: true },
+  cosmetics: { cyextv: true, cyexdeck: true, '7tv': true, bttv: true, ffz: true },
   order: [...DEFAULT_ORDER],
   animations: 'on',
   disabledChannels: [],

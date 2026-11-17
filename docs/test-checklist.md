@@ -23,6 +23,10 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 - [ ] cyex deck supporter badges, BTTV and FFZ badges show before the name on Twitch, each tooltip naming its provider.
 - [ ] Each badge provider's switch hides its badges in new messages.
 - [ ] 7TV badges and name paints show for 7TV users in a busy channel (gradients, pictures, shadows), on Twitch and Kick; with 7TV's own extension installed they're left to it.
+- [ ] cyex.tv cosmetics (needs the cyex.tv server running, or the mock API, and a granted badge and paint): with a chatter whose account owns and shows a badge and a paint (grant them in the cyex.tv admin, then pick them in the account page), their messages show the badge (18 px, tooltip "name" then "cyex.tv") before the name and the paint on the name, on Twitch and Kick. Check a gradient, a repeating one with a shadow, and an image paint.
+- [ ] Changing the selection or editing the paint on cyex.tv updates names already in chat within a few seconds, without a reload; deleting the paint or revoking it takes it off.
+- [ ] With "Animations" off, animated badges and image paints show their first frame. With "Readable colours" on, painted names are left alone. The "cyex.tv" row under Badges and paints (on by default) hides the badges and paints in new messages and stops the lookups (nothing to api.cyex.tv/v1/cosmetics in the network tab).
+- [ ] A chatter with both a cyex.tv paint and a 7TV paint shows the cyex.tv one; badges from both providers show side by side.
 
 ## Personal emotes (cyex.tv)
 
