@@ -7,6 +7,7 @@ import { EmoteIndex } from '../chat/index';
 import { ChannelLive } from '../live/sources';
 import type { SocketFactory } from '../live/socket';
 import { type BadgeMap, type BadgeProvider, badgeTooltip, bttvBadges, cyexDeck, ffzBadges } from '../cosmetics/badges';
+import { SeventvCosmetics } from '../cosmetics/seventv';
 import { EMOTE_CLASS, STYLES, renderEmotes } from '../chat/render';
 import { PROVIDERS } from '../providers';
 import { allowsPersonal, personal } from '../providers/cyextv';
@@ -17,7 +18,8 @@ import type { Channel, Site } from '../sites/index';
 const PERSONAL_BATCH_MS = 400;
 /** cyex deck's badge spec asks for every 30 minutes; BTTV's and FFZ's lists change as rarely. */
 export const BADGE_REFRESH_MS = 30 * 60_000;
-const BADGE_SOURCES: Record<BadgeProvider, (f: FetchJson) => Promise<BadgeMap>> = { cyexdeck: cyexDeck, bttv: bttvBadges, ffz: ffzBadges };
+/** Badge lists fetched on a timer; 7TV's arrive over its socket instead. */
+const BADGE_SOURCES: Partial<Record<BadgeProvider, (f: FetchJson) => Promise<BadgeMap>>> = { cyexdeck: cyexDeck, bttv: bttvBadges, ffz: ffzBadges };
 const PERSONAL_TTL_MS = 10 * 60_000;
 
 export type AppDeps = {
@@ -43,6 +45,8 @@ export class App {
   private badges = new Map<BadgeProvider, BadgeMap>();
   private badgeTimer: ReturnType<typeof setInterval> | null = null;
   private live: ChannelLive | null;
+  /** 7TV badges and paints seen in the current channel. */
+  private seventvLooks: SeventvCosmetics | null = null;
   private doc: Document;
   private now: () => number;
 
@@ -89,6 +93,8 @@ export class App {
     const ch = await this.deps.site.channel();
     if (!ch || (this.channel && ch.id === this.channel.id && ch.platform === this.channel.platform)) return false;
     this.channel = ch;
+    // Another channel: its own 7TV cosmetics.
+    this.seventvLooks = null;
     if (!(await this.loadChannel(ch, false))) return false;
     this.allowPersonal = this.enabled().includes('cyextv') ? await allowsPersonal(this.deps.fetch, ch.platform, ch.id).catch(() => false) : false;
     this.personalSeen.clear();
@@ -110,6 +116,7 @@ export class App {
   private watchLive(ch: Channel) {
     if (!this.live) return;
     const on = this.enabled();
+    if (this.seventvLooks === null || !this.seventvCosmeticsOn()) this.seventvLooks = this.seventvCosmeticsOn() ? new SeventvCosmetics(ch.platform) : null;
     const setOf = (p: ProviderId) => this.channelSets.find((s) => s.provider === p)?.setId;
     this.live.watch(
       {
@@ -119,6 +126,8 @@ export class App {
         seventvSet: setOf('7tv'),
         cyextv: on.includes('cyextv'),
         seventv: on.includes('7tv'),
+        seventvCosmetics: this.seventvLooks ?? undefined,
+        looks: (ids) => this.relook(ids),
       },
       () => {
         if (this.channel !== ch) return;
@@ -131,16 +140,22 @@ export class App {
     );
   }
 
-  /** Badge providers switched on that apply on this site. */
+  /** 7TV badges and paints are wanted here: switched on, and not left to 7TV's own extension. */
+  seventvCosmeticsOn(): boolean {
+    const others = (this.doc.documentElement.dataset.cyextvOthers ?? '').split(',');
+    return this.settings.cosmetics['7tv'] && (this.settings.overrideOthers || !others.includes('7tv'));
+  }
+
+  /** Badge providers switched on that apply on this site, in the order they show. */
   badgeProviders(): BadgeProvider[] {
     if (this.deps.site.platform !== 'twitch') return [];
-    return (['cyexdeck', 'bttv', 'ffz'] as const).filter((p) => this.settings.cosmetics[p]);
+    return (['cyexdeck', '7tv', 'bttv', 'ffz'] as const).filter((p) => (p === '7tv' ? this.seventvCosmeticsOn() : this.settings.cosmetics[p]));
   }
 
   /** Loads every enabled badge provider's list; a failing one keeps what it had. */
   async loadBadges() {
-    const on = this.badgeProviders();
-    const results = await Promise.allSettled(on.map((p) => BADGE_SOURCES[p](this.deps.fetch)));
+    const on = this.badgeProviders().filter((p) => BADGE_SOURCES[p]);
+    const results = await Promise.allSettled(on.map((p) => BADGE_SOURCES[p]!(this.deps.fetch)));
     results.forEach((r, i) => {
       if (r.status === 'fulfilled') this.badges.set(on[i]!, r.value);
     });
@@ -148,7 +163,46 @@ export class App {
 
   /** The badges a chatter shows, provider by provider. */
   badgesOf(userId: string) {
-    return this.badgeProviders().flatMap((p) => this.badges.get(p)?.get(userId) ?? []);
+    return this.badgeProviders().flatMap((p) => {
+      if (p === '7tv') {
+        const b = this.seventvLooks?.badgeOf(userId);
+        return b ? [b] : [];
+      }
+      return this.badges.get(p)?.get(userId) ?? [];
+    });
+  }
+
+  /** A 7TV paint on the chatter's name, or none (taking back one that was there). */
+  private applyPaint(message: Element, sender: string) {
+    const name = this.deps.site.nameElement(message);
+    if (!name) return;
+    const paint = this.seventvCosmeticsOn() ? this.seventvLooks?.paintOf(sender) : undefined;
+    if ((name.dataset.cyextvPaint ?? '') === (paint?.id ?? '')) return;
+    for (const p of ['background-image', 'background-clip', '-webkit-background-clip', 'color', 'filter', 'background-size']) name.style.removeProperty(p);
+    delete name.dataset.cyextvPaint;
+    if (!paint) return;
+    name.dataset.cyextvPaint = paint.id;
+    if (paint.backgroundImage) {
+      name.style.backgroundImage = paint.backgroundImage;
+      name.style.setProperty('background-size', 'cover');
+      name.style.setProperty('-webkit-background-clip', 'text');
+      name.style.setProperty('background-clip', 'text');
+      name.style.color = 'transparent';
+    } else if (paint.color) name.style.color = paint.color;
+    if (paint.filter) name.style.filter = paint.filter;
+    if (this.settings.tooltips) name.title = `${paint.name}\n7TV paint`;
+  }
+
+  /** A chatter's badge or paint changed: redraw those parts of their messages on screen. */
+  private relook(userIds: string[]) {
+    for (const id of userIds) {
+      if (!/^\d+$/.test(id)) continue;
+      this.doc.querySelectorAll(`[data-cyextv-uid="${id}"]`).forEach((m) => {
+        m.querySelector('.cyextv-badges')?.remove();
+        this.placeBadges(m, id);
+        this.applyPaint(m, id);
+      });
+    }
   }
 
   private placeBadges(message: Element, sender: string) {
@@ -176,7 +230,10 @@ export class App {
   process(message: Element) {
     if (this.disabledHere()) return;
     const sender = this.deps.site.sender(message) ?? undefined;
-    if (sender) this.placeBadges(message, sender);
+    if (sender) {
+      this.placeBadges(message, sender);
+      this.applyPaint(message, sender);
+    }
     const body = this.deps.site.body(message);
     if (!body) return;
     renderEmotes(body, (w) => this.index.find(w, sender), this.deps.site.skip, this.settings);

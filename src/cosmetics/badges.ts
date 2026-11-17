@@ -3,7 +3,7 @@
 // sources can sit side by side). All three are keyed by Twitch user ID.
 import { type FetchJson, arr, https, isObject, num, str } from '../providers/types';
 
-export type BadgeProvider = 'cyexdeck' | 'bttv' | 'ffz';
+export type BadgeProvider = 'cyexdeck' | '7tv' | 'bttv' | 'ffz';
 
 export type Badge = {
   provider: BadgeProvider;
@@ -19,7 +19,7 @@ export type Badge = {
 /** Each provider's badges, by Twitch user ID, in the order they show. */
 export type BadgeMap = Map<string, Badge[]>;
 
-const PROVIDER_NAME: Record<BadgeProvider, string> = { cyexdeck: 'cyex deck', bttv: 'BTTV', ffz: 'FFZ' };
+const PROVIDER_NAME: Record<BadgeProvider, string> = { cyexdeck: 'cyex deck', '7tv': '7TV', bttv: 'BTTV', ffz: 'FFZ' };
 
 export function badgeTooltip(b: Badge): string {
   return `${b.title}\n${PROVIDER_NAME[b.provider]}`;

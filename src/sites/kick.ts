@@ -43,4 +43,7 @@ export const kick: Site = {
   badgeSlot() {
     return null;
   },
+  nameElement(message) {
+    return message.querySelector<HTMLElement>('button[title]');
+  },
 };

@@ -102,7 +102,9 @@ describe('the providers’ live updates', () => {
     ws.open();
     ws.receive({ op: 1, d: { heartbeat_interval: 45000, session_id: 'x' } });
     expect(ws.sent).toEqual([{ op: 35, d: { type: 'emote_set.update', condition: { object_id: '01SET' } } }]);
-    ws.receive({ op: 0, d: { type: 'emote_set.update', body: {} } });
+    ws.receive({ op: 0, d: { type: 'emote_set.update', body: { id: '01SET' } } });
+    // Someone else's set (the cosmetics subscription brings those too) doesn't count.
+    ws.receive({ op: 0, d: { type: 'emote_set.update', body: { id: '01OTHER' } } });
     ws.receive({ op: 0, d: { type: 'user.update', body: {} } });
     vi.advanceTimersByTime(1000);
     expect(changed).toHaveBeenCalledTimes(1);
