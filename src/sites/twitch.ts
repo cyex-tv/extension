@@ -23,4 +23,7 @@ export const twitch: Site = {
     return id && login ? { platform: 'twitch', id, login } : null;
   },
   skip: '[data-a-target="emote-name"], .mention-fragment, .link-fragment, a, img, button',
+  badgeSlot(message) {
+    return message.querySelector('.chat-line__username');
+  },
 };

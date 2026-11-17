@@ -75,10 +75,13 @@ function render() {
   const cosmetics = $('#cosmetics');
   cosmetics.replaceChildren(
     ...(Object.keys(COSMETIC_LABEL) as (keyof Settings['cosmetics'])[]).map((id) => {
-      const row = toggle(COSMETIC_LABEL[id], settings.cosmetics[id], (on) => update(setCosmetics(settings, id, on)));
-      // Badges and paints aren't drawn yet; the switches wait for them.
-      row.classList.add('off');
-      row.querySelector('input')!.disabled = true;
+      const later = id === '7tv';
+      const row = toggle(COSMETIC_LABEL[id], settings.cosmetics[id], (on) => update(setCosmetics(settings, id, on)), later ? 'Badges and paints come later.' : 'Twitch');
+      // 7TV's badges and paints need its live socket; the switch waits for them.
+      if (later) {
+        row.classList.add('off');
+        row.querySelector('input')!.disabled = true;
+      }
       return row;
     }),
   );

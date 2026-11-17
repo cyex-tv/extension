@@ -1,7 +1,7 @@
 // The Manifest V3 for each browser. Chrome runs the background as a service worker; Firefox
 // as an event page (`background.scripts`) and needs its add-on ID. Everything else is shared.
 
-const HOSTS = ['https://api.cyex.tv/*', 'https://7tv.io/*', 'https://api.betterttv.net/*', 'https://api.frankerfacez.com/*'];
+const HOSTS = ['https://api.cyex.tv/*', 'https://7tv.io/*', 'https://api.betterttv.net/*', 'https://api.frankerfacez.com/*', 'https://api.cyex.app/badges/v1/*'];
 const SITES = ['https://www.twitch.tv/*', 'https://kick.com/*'];
 
 /** @param {'chrome' | 'firefox'} target @param {string} version */
