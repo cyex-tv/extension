@@ -4,6 +4,7 @@
 // allows them. Providers whose own extension is installed are left to it unless the user says
 // otherwise (`settings.overrideOthers`).
 import { EmoteIndex } from '../chat/index';
+import { type BadgeMap, type BadgeProvider, badgeTooltip, bttvBadges, cyexDeck, ffzBadges } from '../cosmetics/badges';
 import { EMOTE_CLASS, STYLES, renderEmotes } from '../chat/render';
 import { PROVIDERS } from '../providers';
 import { allowsPersonal, personal } from '../providers/cyextv';
@@ -12,6 +13,9 @@ import type { Settings } from '../settings';
 import type { Channel, Site } from '../sites/index';
 
 const PERSONAL_BATCH_MS = 400;
+/** cyex deck's badge spec asks for every 30 minutes; BTTV's and FFZ's lists change as rarely. */
+export const BADGE_REFRESH_MS = 30 * 60_000;
+const BADGE_SOURCES: Record<BadgeProvider, (f: FetchJson) => Promise<BadgeMap>> = { cyexdeck: cyexDeck, bttv: bttvBadges, ffz: ffzBadges };
 const PERSONAL_TTL_MS = 10 * 60_000;
 
 export type AppDeps = { site: Site; fetch: FetchJson; settings: Settings; doc?: Document; now?: () => number };
@@ -26,6 +30,8 @@ export class App {
   private personalQueue = new Set<string>();
   private personalTimer: ReturnType<typeof setTimeout> | null = null;
   private observer: MutationObserver | null = null;
+  private badges = new Map<BadgeProvider, BadgeMap>();
+  private badgeTimer: ReturnType<typeof setInterval> | null = null;
   private doc: Document;
   private now: () => number;
 
@@ -81,12 +87,54 @@ export class App {
     return true;
   }
 
-  /** Rewrites one message's emotes; queues its sender for a personal-set lookup. */
+  /** Badge providers switched on that apply on this site. */
+  badgeProviders(): BadgeProvider[] {
+    if (this.deps.site.platform !== 'twitch') return [];
+    return (['cyexdeck', 'bttv', 'ffz'] as const).filter((p) => this.settings.cosmetics[p]);
+  }
+
+  /** Loads every enabled badge provider's list; a failing one keeps what it had. */
+  async loadBadges() {
+    const on = this.badgeProviders();
+    const results = await Promise.allSettled(on.map((p) => BADGE_SOURCES[p](this.deps.fetch)));
+    results.forEach((r, i) => {
+      if (r.status === 'fulfilled') this.badges.set(on[i]!, r.value);
+    });
+  }
+
+  /** The badges a chatter shows, provider by provider. */
+  badgesOf(userId: string) {
+    return this.badgeProviders().flatMap((p) => this.badges.get(p)?.get(userId) ?? []);
+  }
+
+  private placeBadges(message: Element, sender: string) {
+    if (message.querySelector('.cyextv-badges')) return;
+    const slot = this.deps.site.badgeSlot(message);
+    const list = slot ? this.badgesOf(sender) : [];
+    if (!slot || list.length === 0) return;
+    const wrap = this.doc.createElement('span');
+    wrap.className = 'cyextv-badges';
+    for (const b of list) {
+      const img = this.doc.createElement('img');
+      img.src = b.urls[0];
+      img.srcset = `${b.urls[0]} 1x, ${b.urls[1]} 2x, ${b.urls[2]} 4x`;
+      img.alt = b.title;
+      img.height = 18;
+      img.decoding = 'async';
+      if (this.settings.tooltips) img.title = badgeTooltip(b);
+      if (b.color) img.style.backgroundColor = b.color;
+      wrap.append(img);
+    }
+    slot.before(wrap);
+  }
+
+  /** Rewrites one message's emotes and adds its sender's badges; queues the sender for a personal-set lookup. */
   process(message: Element) {
     if (this.disabledHere()) return;
+    const sender = this.deps.site.sender(message) ?? undefined;
+    if (sender) this.placeBadges(message, sender);
     const body = this.deps.site.body(message);
     if (!body) return;
-    const sender = this.deps.site.sender(message) ?? undefined;
     renderEmotes(body, (w) => this.index.find(w, sender), this.deps.site.skip, this.settings);
     if (sender && this.allowPersonal) this.wantPersonal(sender);
   }
@@ -129,6 +177,7 @@ export class App {
     this.doc.addEventListener('mouseover', this.hover, { passive: true });
     this.doc.addEventListener('mouseout', this.hover, { passive: true });
     this.doc.addEventListener('copy', this.copy);
+    if (this.badgeProviders().length) this.badgeTimer = setInterval(() => void this.loadBadges(), BADGE_REFRESH_MS);
 
     let pending = new Set<Element>();
     let scheduled = false;
@@ -215,6 +264,7 @@ export class App {
 
   stop() {
     this.observer?.disconnect();
+    if (this.badgeTimer) clearInterval(this.badgeTimer);
     this.doc.removeEventListener('mouseover', this.hover);
     this.doc.removeEventListener('mouseout', this.hover);
     this.doc.removeEventListener('copy', this.copy);

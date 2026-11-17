@@ -16,7 +16,10 @@ const MAX_ENTRIES = 500;
 export function allowed(raw: string): boolean {
   try {
     const url = new URL(raw);
-    return url.protocol === 'https:' && API_HOSTS.includes(url.hostname) && !url.username && !url.password;
+    if (url.protocol !== 'https:' || url.username || url.password) return false;
+    // cyex.app: only its public badge API (AGENTS.md: the one contact with cyex.app).
+    if (url.hostname === 'api.cyex.app') return url.pathname.startsWith('/badges/v1/');
+    return API_HOSTS.includes(url.hostname);
   } catch {
     return false;
   }

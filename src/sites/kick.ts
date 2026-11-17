@@ -39,4 +39,8 @@ export const kick: Site = {
     return cached.channel;
   },
   skip: '[data-emote-id], a, img, button',
+  // The badge providers so far (cyex deck, BTTV, FFZ) are Twitch-only.
+  badgeSlot() {
+    return null;
+  },
 };

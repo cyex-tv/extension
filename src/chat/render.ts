@@ -93,4 +93,6 @@ export const STYLES = `
 .${EMOTE_CLASS} { display: inline-grid; vertical-align: middle; margin: -0.3em 0.1em; line-height: 0; }
 .${EMOTE_CLASS} > img { grid-area: 1 / 1; max-height: 28px; width: auto; height: auto; place-self: center; }
 .${EMOTE_CLASS} > img.cyextv-over { pointer-events: none; }
+.cyextv-badges { display: inline; }
+.cyextv-badges > img { display: inline-block; height: 18px; width: auto; margin: 0 3px 0 0; vertical-align: middle; border-radius: 2px; }
 `;

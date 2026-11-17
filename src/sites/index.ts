@@ -16,6 +16,8 @@ export interface Site {
   channel(): Promise<Channel | null>;
   /** Parts of a message that must never be rewritten (native emotes, mentions, links). */
   skip: string;
+  /** Where other providers' badges go: before this element. Null where they don't apply. */
+  badgeSlot(message: Element): Element | null;
 }
 
 /** The login in the address: `/name`, `/popout/name/chat`, `/moderator/name`. */
