@@ -12,6 +12,7 @@ import {
   arr,
   https,
   isObject,
+  isPlatformId,
   num,
   str,
 } from './types';
@@ -77,6 +78,7 @@ export const cyextv: EmoteProvider = {
   },
   async channel(fetch: FetchJson, platform: Platform, channelId: string, fresh = false) {
     const empty: EmoteSet = { provider: 'cyextv', scope: 'channel', emotes: [] };
+    if (!isPlatformId(channelId)) return empty;
     const ch = await fetch(`${API}/channels/${platform}/${encodeURIComponent(channelId)}`, { fresh });
     if (!isObject(ch)) return empty;
     const active = str(ch.active_set_id);
@@ -88,6 +90,7 @@ export const cyextv: EmoteProvider = {
 
 /** Whether a channel shows other people's personal emotes (default yes). */
 export async function allowsPersonal(fetch: FetchJson, platform: Platform, channelId: string): Promise<boolean> {
+  if (!isPlatformId(channelId)) return true;
   const ch = await fetch(`${API}/channels/${platform}/${encodeURIComponent(channelId)}`);
   return !isObject(ch) || ch.allow_personal_emotes !== false;
 }
@@ -95,7 +98,7 @@ export async function allowsPersonal(fetch: FetchJson, platform: Platform, chann
 /** Personal sets of these chatters, by platform user ID. Chatters without one are left out. */
 export async function personal(fetch: FetchJson, platform: Platform, userIds: string[]): Promise<Map<string, EmoteSet>> {
   const out = new Map<string, EmoteSet>();
-  const ids = [...new Set(userIds)].slice(0, LOOKUP_MAX);
+  const ids = [...new Set(userIds.filter(isPlatformId))].slice(0, LOOKUP_MAX);
   if (ids.length === 0) return out;
   const found = await fetch(`${API}/personal-sets/lookup`, { method: 'POST', body: { platform, user_ids: ids } });
   if (!isObject(found)) return out;

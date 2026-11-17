@@ -11,6 +11,7 @@ import {
   arr,
   https,
   isObject,
+  isPlatformId,
   num,
   str,
 } from './types';
@@ -74,6 +75,7 @@ export const seventv: EmoteProvider = {
     return set(await fetch(`${API}/emote-sets/global`), 'global');
   },
   async channel(fetch: FetchJson, platform: Platform, channelId: string, fresh = false) {
+    if (!isPlatformId(channelId)) return { provider: '7tv', scope: 'channel', emotes: [] };
     const user = await fetch(`${API}/users/${platform}/${encodeURIComponent(channelId)}`, { fresh });
     if (!isObject(user) || !isObject(user.emote_set)) return { provider: '7tv', scope: 'channel', emotes: [] };
     const out = set(user.emote_set, 'channel');

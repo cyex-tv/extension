@@ -3,6 +3,7 @@ import { bttv } from '../src/providers/bttv';
 import { allowsPersonal, cyextv, personal } from '../src/providers/cyextv';
 import { ffz } from '../src/providers/ffz';
 import { seventv } from '../src/providers/seventv';
+import { isPlatformId } from '../src/providers/types';
 import * as F from './fixtures';
 
 describe('7TV', () => {
@@ -113,5 +114,21 @@ describe('cyex.tv', () => {
     expect((calls[0]!.body as { user_ids: string[] }).user_ids).toHaveLength(100);
     expect(await personal(fetch, 'twitch', [])).toEqual(new Map());
     expect(calls).toHaveLength(1);
+  });
+});
+
+describe('platform ids from the page', () => {
+  it('accepts only numeric ids', () => {
+    expect(isPlatformId('12345678')).toBe(true);
+    for (const bad of ['', '..', '../x', '1/2', '12a', '1'.repeat(21), ' 1', '-1']) expect(isPlatformId(bad)).toBe(false);
+  });
+
+  it('never fetches for a non-numeric channel id', async () => {
+    const urls: string[] = [];
+    const fetch = async (url: string) => (urls.push(url), null);
+    for (const p of [cyextv, seventv, bttv, ffz]) expect((await p.channel(fetch, 'twitch', '..')).emotes).toEqual([]);
+    expect(await allowsPersonal(fetch, 'twitch', '../x')).toBe(true);
+    expect((await personal(fetch, 'twitch', ['..', 'a/b'])).size).toBe(0);
+    expect(urls).toEqual([]);
   });
 });
