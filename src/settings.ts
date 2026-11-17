@@ -14,6 +14,8 @@ export type Settings = {
   /** `platform:login` of channels where the extension stays out. */
   disabledChannels: string[];
   tooltips: boolean;
+  /** Draw a provider's emotes even when its own extension (7TV, BTTV, FFZ) is installed. */
+  overrideOthers: boolean;
 };
 
 export const DEFAULTS: Settings = {
@@ -23,6 +25,7 @@ export const DEFAULTS: Settings = {
   animations: 'on',
   disabledChannels: [],
   tooltips: true,
+  overrideOthers: false,
 };
 
 const KEY = 'settings';
@@ -49,6 +52,7 @@ export function merge(stored: unknown): Settings {
     animations: s.animations === 'off' || s.animations === 'hover' ? s.animations : 'on',
     disabledChannels: Array.isArray(s.disabledChannels) ? s.disabledChannels.filter((c) => typeof c === 'string') : [],
     tooltips: typeof s.tooltips === 'boolean' ? s.tooltips : DEFAULTS.tooltips,
+    overrideOthers: typeof s.overrideOthers === 'boolean' ? s.overrideOthers : DEFAULTS.overrideOthers,
   };
 }
 

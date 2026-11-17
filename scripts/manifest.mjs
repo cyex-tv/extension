@@ -14,7 +14,11 @@ export function manifest(target, version) {
     version,
     permissions: ['storage'],
     host_permissions: HOSTS,
-    content_scripts: [{ matches: SITES, js: ['content.js'], run_at: 'document_idle' }],
+    content_scripts: [
+      // Reads the sites' React props (sender and channel IDs) into data attributes; see src/main.
+      { matches: SITES, js: ['main.js'], run_at: 'document_idle', world: 'MAIN' },
+      { matches: SITES, js: ['content.js'], run_at: 'document_idle' },
+    ],
     action: { default_title: 'cyex.tv', default_icon: { 16: 'icons/16.png', 32: 'icons/32.png', 48: 'icons/48.png' } },
     icons: { 16: 'icons/16.png', 32: 'icons/32.png', 48: 'icons/48.png', 128: 'icons/128.png' },
   };

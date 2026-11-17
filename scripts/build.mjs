@@ -12,7 +12,7 @@ import { icons } from './icons.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'));
-const ENTRIES = { content: 'src/content/index.ts', background: 'src/background/index.ts' };
+const ENTRIES = { content: 'src/content/index.ts', main: 'src/main/index.ts', background: 'src/background/index.ts' };
 const targets = process.argv.slice(2).filter((t) => t === 'chrome' || t === 'firefox');
 
 for (const target of targets.length ? targets : ['chrome', 'firefox']) {
