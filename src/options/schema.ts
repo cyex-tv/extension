@@ -95,6 +95,17 @@ export const PAGES: Page[] = [
           { kind: 'number', key: 'chat.lineHeight', label: 'Line height', hint: 'Space between lines of a message.', min: 100, max: 200, unit: '%', zero: 'Like the site' },
           { kind: 'toggle', key: 'chat.compact', label: 'Compact lines', hint: 'Less space above and below each message.' },
           { kind: 'toggle', key: 'chat.lastRead', label: 'Last-read line', hint: 'Marks where you were when you switched away.' },
+          {
+            kind: 'choice',
+            key: 'chat.repeats',
+            label: 'Repeated messages',
+            hint: 'One message from several chatters within 20 seconds. Count folds them into the first with a “×3”; Count and dim keeps them, faded.',
+            options: [
+              ['off', 'Off'],
+              ['count', 'Count'],
+              ['dim', 'Count and dim'],
+            ],
+          },
         ],
       },
       {

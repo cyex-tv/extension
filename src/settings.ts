@@ -13,6 +13,8 @@ export type DeletedStyle = 'site' | 'strike' | 'faded' | 'hidden';
 export type Clock = '24h' | '12h';
 export type ChatFont = 'site' | 'system' | 'serif' | 'mono';
 export type EmoteClick = 'off' | 'insert' | 'copy';
+/** How repeated messages from different chatters show: not folded, folded with a x N, or kept and faded. */
+export type Repeats = 'off' | 'count' | 'dim';
 export type Sound = 'chime' | 'ping' | 'pop';
 
 /** A word rule (cyex deck's Highlights → Words). */
@@ -65,6 +67,8 @@ export type ChatSettings = {
   /** Cut stacks of combining marks ("zalgo") down to three. */
   cleanZalgo: boolean;
   lastRead: boolean;
+  /** Fold the same message from different chatters into the first, with a counter. */
+  repeats: Repeats;
   // Timestamps
   timestamps: boolean;
   seconds: boolean;
@@ -145,6 +149,7 @@ export const CHAT_DEFAULTS: ChatSettings = {
   cleanInvisible: true,
   cleanZalgo: true,
   lastRead: true,
+  repeats: 'off',
   timestamps: false,
   seconds: false,
   clock: '24h',
@@ -266,6 +271,7 @@ export function mergeChat(stored: unknown): ChatSettings {
     cleanInvisible: b('cleanInvisible'),
     cleanZalgo: b('cleanZalgo'),
     lastRead: b('lastRead'),
+    repeats: oneOf(c.repeats, ['off', 'count', 'dim'] as const, d.repeats),
     timestamps: b('timestamps'),
     seconds: b('seconds'),
     clock: oneOf(c.clock, ['24h', '12h'] as const, d.clock),

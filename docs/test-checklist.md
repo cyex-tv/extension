@@ -39,6 +39,13 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 - [ ] "Animations off" shows still pictures; "on hover" animates only the emote under the pointer.
 - [ ] Switching the extension off for a channel leaves that chat untouched.
 
+## Repeated messages
+
+- [ ] Settings → Chat → Repeated messages is Off by default; with Off nothing changes in a busy chat.
+- [ ] With Count, in a chat where several people post the same thing ("1", "KEKW", "gg"): the first message gets a "×3"-style counter, the others disappear. "Count and dim" keeps them, faded. Different capitalisation, extra spaces, trailing "!" and "KEKW KEKW KEKW" against "KEKW" fold together; two different sentences don't.
+- [ ] Your own message is never folded and doesn't start a group; a message that mentions you or is highlighted stays visible with its colour; the same person posting twice isn't folded.
+- [ ] Time out the first message of a folded group: the repeats show again and the counter goes. The counter's tooltip says how many times and never names anyone. At 20 seconds without a repeat a new copy starts a new group. Switching the setting back to Off removes counters and shows every message again.
+
 ## Selector check
 
 - [ ] Popup → "Check this page's selectors" (on a channel and on a Twitch or Kick page that isn't one, like the directory) opens the panel at the top right and closes the popup; Alt+Shift+H opens and closes it as well (if the key is taken, set it under the browser's extension shortcuts).
