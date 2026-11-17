@@ -53,3 +53,19 @@ export function setChannel(s: Settings, key: string, on: boolean): Settings {
   const rest = s.disabledChannels.filter((c) => c !== key);
   return { ...s, disabledChannels: on ? rest : [...rest, key] };
 }
+
+/** The channel's page; logins are checked, so nothing else can end up in the address. */
+export function channelUrl(platform: 'twitch' | 'kick', login: string): string {
+  const safe = /^[a-z0-9_]{1,25}$/i.test(login) ? login.toLowerCase() : '';
+  return platform === 'kick' ? `https://kick.com/${safe}` : `https://www.twitch.tv/${safe}`;
+}
+
+/** "now", "5 min", "3 h", then the date as YYYY/MM/DD. */
+export function mentionTime(at: number, now: number): string {
+  const min = Math.floor((now - at) / 60_000);
+  if (min < 1) return 'now';
+  if (min < 60) return `${min} min`;
+  if (min < 24 * 60) return `${Math.floor(min / 60)} h`;
+  const d = new Date(at);
+  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+}

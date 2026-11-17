@@ -55,6 +55,9 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 - [ ] Alternate lines, separators and font size each apply on their own and together; stripes do not jump while old lines scroll off.
 - [ ] Last read: switch tabs, new messages arrive, switch back: a red line sits under the last message you saw. With no new messages, no line.
 
+- [ ] Font (System, Serif, Mono), line height (100 to 200 %) and compact lines change chat text only; "Like the site" and an empty field go back.
+- [ ] A message ending in an invisible character (paste `KEKW` plus U+E0000, as 7TV sends to beat "duplicate message") shows the emote. Family emoji (👨‍👩‍👧) and Persian text with ZWNJ look as before. Zalgo text stays inside its line.
+
 ## Highlights and ignores
 
 - [ ] A message with your name (as `@name` or `name`) gets a blue tinted line with a bar on its left; your own messages never count as mentions.
@@ -64,6 +67,8 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 - [ ] "Your own messages" tints your lines when on; people in "Never highlight" (a bot) never light up or ping.
 - [ ] With sounds on, a mention or a rule with sound plays a soft two-note chime, at most one every 1.5 s, also in a background tab; nothing plays for the messages already in chat at load.
 - [ ] Before you have clicked on the page the chime may be blocked; after the first click it works.
+- [ ] Highlights → Sound: Chime, Ping and Pop each sound different; volume 0 plays nothing, 100 is loud but not clipped.
+- [ ] Mentions list: with someone mentioning you live, the popup's "Mentions" section lists it (sender, channel, "now"), newest first, at most 5 shown; clicking one opens the channel in a new tab; Clear empties it. Messages already on the page at load don't count. Off: the section is gone.
 - [ ] A broken regex in a word rule does nothing (no error, chat keeps going).
 - [ ] A hidden person's messages disappear (also with the extension's other features on); turning them off brings them back.
 - [ ] An ignore rule set to "hide" hides the whole message; otherwise the words become `***` (or your swap), while emotes, @mentions and links in the same message stay as they were.
@@ -84,6 +89,11 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 - [ ] With animations off the menu shows still pictures. Outside click and a channel change close the panel.
 - [ ] Settings page: switching Tab completion or the emote menu off removes the Tab handling or the button at once.
 
+## Emote clicks
+
+- [ ] Clicking one of our emotes in chat adds `name ` to the message box at the caret (Twitch and Kick); "Copies its name" copies it and shows a small "Copied name" note at the bottom; "Nothing" leaves clicks alone. The site's own emotes and Ctrl/Cmd clicks are untouched.
+- [ ] Emote size 200 % makes our emotes twice as tall without shifting lines on load.
+
 ## Usercard and shortcuts
 
 - [ ] Twitch: click a chatter's name; their card gets a "Messages" section at the bottom with a count and their latest 10 messages since you opened the chat, newest first, `HH:mm` before each. Readable on dark and light themes.
@@ -92,6 +102,7 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 - [ ] Switching channel starts the lists empty. Messages with emotes show their text names, and nothing in a message is read as markup.
 - [ ] Kick (needs a live check, the selector is a best guess): click a chatter's name in chat; the popup gets the same section. If not, note the popup's markup for `userCard()` in src/sites/kick.ts.
 - [ ] With the setting off, no section appears; turning it off with a card open removes it.
+- [ ] The card shows "Your notes" (nickname, note) above Messages. Type a nickname, press Enter: their name in chat shows it at once (also on older lines), hovering shows the real name and the note (Twitch). Typing isn't interrupted while they chat. Settings → Usercard → Nicknames and notes lists them; editing or removing there updates open chats without a reload. Kick: the nickname shows, the site's tooltip stays.
 - [ ] Alt+E opens and closes the emote menu (once the emote menu is built); no effect with Ctrl or Cmd held.
 - [ ] "/" outside any text box focuses the message box and doesn't type a slash; inside the message box, search fields or other inputs it types a slash as usual.
 - [ ] Shortcuts off: Alt+E and "/" do nothing.

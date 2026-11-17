@@ -18,6 +18,10 @@ Chat cosmetics from cyex.tv (badges before the name, name paints on it) come fro
 | Lines between messages | F D | yes | yes | S | S | built (chat looks) |
 | Chat text size | F D | yes | yes | S | M | built (chat looks) |
 | Last-read line when you switch away | D | yes | yes | S | M | built (chat looks) |
+| Chat font (system, serif, mono), line height, compact lines | F D | yes | yes | S | M | built (more features); fonts are a short system list, since a page can't list the user's fonts |
+| Invisible characters removed (zero-width spaces, word joiners, 7TV's U+E0000 duplicate bypass) | 7 | yes | yes | S | M | built (more features), on: emotes at the end of a message match again. ZWNJ, direction marks and ZWJ inside emoji stay |
+| Stacked accents ("zalgo") cut to three marks per letter | - | yes | yes | S | S | built (more features), on |
+| Chat search, rate meter, screen reader announcements | D | partly | partly | M | S | later: the sites' lists are virtualised, so a search only sees what's drawn |
 | Pause chat on hover or while holding a key | 7 F B D | no | no | L | M | later: Twitch has it natively (Chat settings → Pause chat), and stopping the sites' own auto-scroll needs their React internals |
 | Count repeats / mark near-duplicates | 7 D | yes | yes | M | S | later: needs a per-chat history model; low value next to ignores |
 | Smooth new messages, hold chat back to match stream delay | D | no | no | L | S | later: the sites own the list rendering |
@@ -30,6 +34,8 @@ Chat cosmetics from cyex.tv (badges before the name, name paints on it) come fro
 |---|---|---|---|---|---|---|
 | Mentions of your name highlighted | 7 F B D | yes | yes (add your name) | S | L | built (highlights) |
 | Sound on mention, off by default | 7 F B D | yes | yes | S | M | built (highlights) |
+| Sound choice (chime, ping, pop) and volume | 7 D | yes | yes | S | S | built (more features); made with WebAudio, no files and no file picker (an extension page can't play local paths) |
+| Mentions list in the toolbar popup | D | yes | yes | S | M | built (more features): the latest 50 live mentions with channel, sender and time, on this device only (storage.local), with Clear |
 | Custom words: whole word, match case, regex, colour, sound, colour only the words | 7 F B D | yes | yes | M | L | built (highlights) |
 | People highlighted by login | 7 F B D | yes | yes | S | M | built (highlights) |
 | First messages marked (green) | 7 F D | yes | no (no flag in Kick's data) | S | M | built (highlights), Twitch |
@@ -58,6 +64,8 @@ Chat cosmetics from cyex.tv (badges before the name, name paints on it) come fro
 | Usercard: their messages in this chat since you opened it | 7 F D | yes | partly | M | M | built (usercard), on the site's own card |
 | Usercard: account age, follow age | 7 F D | native | native | - | - | the sites' cards show these already |
 | Usercard: earlier names | D | no | no | M | S | later: needs logs.cyex.app and a host permission (asked in questions) |
+| Nicknames (shown instead of the display name) and notes, local | D | yes | yes | M | M | built (more features): edited on the site's card and on the settings page, kept in storage.local; the name's own text node is never touched (CSS draws the nickname), the real name and the note are in the tooltip on Twitch |
+| Name click actions (mention, copy, logs) per modifier | D | partly | partly | M | S | later: clashes with the sites' own card on click |
 | Mod tools (ban/timeout buttons, mod cards) | 7 F B D | partly | partly | L | M | later: needs care with the sites' mod APIs; separate group |
 
 ## Page and clean up
@@ -72,6 +80,11 @@ Chat cosmetics from cyex.tv (badges before the name, name paints on it) come fro
 | Hide the whole chat input, send button, player controls | 7 | yes | yes | S | S | not built: hides things people need; the sites' own "hide chat" covers the rest |
 | Claim bonus channel points | 7 F B | yes | no | S | M | built (clean up), off by default |
 | Large emote previews in the tooltip | 7 F B D | yes | yes | S | M | built (clean up group) |
+| Clicking an emote adds it to your message, or copies its name | 7 F B | yes | yes | S | M | built (more features): adds it by default; Ctrl/Cmd/Alt clicks stay the browser's |
+| Emote size | D | yes | yes | S | S | built (more features), 50 to 300 % of 28 px |
+| Link preview cards (Twitch's clip and video cards) hidden | 7 | yes | - | S | S | built (more features), in Hide on Twitch |
+| Emote usage stats page | 7 D | yes | yes | S | S | later: the emote menu's "most used" row already shows them |
+| Repeat counting and near-duplicate dimming | 7 D | yes | yes | M | S | later: needs a per-chat history model (one implementation for both) |
 | Keyboard shortcuts (emote menu) | F D | yes | yes | S | S | built (usercard group) |
 | Link previews | 7 F D | no | no | L | M | later: fetching any site needs a broad host permission |
 | Theatre mode tweaks, player tweaks | F B | partly | no | L | S | later: out of chat scope |

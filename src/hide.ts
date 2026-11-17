@@ -41,6 +41,7 @@ export const TWITCH_HIDE = [
   tChat('userNotices', 'Sub and gift notices', 'The tinted lines for subs, gifted subs, raids and watch streaks.'),
   tChat('cheers', 'Cheer pictures', 'The animated cheer pictures inside messages.'),
   tChat('replyButton', 'Reply button', 'The reply arrow on a message you hover.'),
+  tChat('linkCards', 'Link previews', 'The cards Twitch draws under links to clips and videos.'),
   tChat('firstChatter', 'First-time chatter prompt', 'Twitch’s “say hello” card for someone new.'),
   tInput('bits', 'Bits button', 'The cheer button next to the message box.'),
   tInput('hypeChatButton', 'Hype Chat button', 'Next to the message box.'),

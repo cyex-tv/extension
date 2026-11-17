@@ -38,6 +38,7 @@ const TWITCH_FIXTURES: Record<string, string> = {
   userNotices: '<div class="user-notice-line" data-test-selector="user-notice-line" data-fixture></div>',
   cheers: '<div data-a-target="chat-line-message"><img class="chat-image cheermote" alt="Cheer100" data-fixture></div>',
   replyButton: '<div data-a-target="chat-line-message"><button aria-label="Click to Reply" data-fixture></button></div>',
+  linkCards: '<div data-a-target="chat-line-message"><div class="chat-card" data-test-selector="chat-card" data-fixture></div></div>',
   firstChatter: '<div data-test-selector="first-time-chatter-prompt" data-fixture></div>',
   bits: '<button data-a-target="bits-button" data-fixture></button>',
   hypeChatButton: '<button aria-label="Hype Chat" data-fixture></button>',

@@ -3,12 +3,14 @@
 import { ext } from '../ext';
 import { COSMETIC_LABEL, PROVIDER_LABEL, move, setCosmetics, setEmotes } from '../popup/model';
 import type { ProviderId } from '../providers/types';
+import { NICK_MAX, NOTE_MAX, NotesStore } from '../features/people/notes';
 import { type Settings, load, merge, save } from '../settings';
 import { ICON, el, icon, input as inputEl, segmented, toggle } from '../ui/dom';
 import { type Item, PAGES, type RuleField, getPath, setPath } from './schema';
 
 let settings: Settings;
 let page = PAGES[0]!.id;
+const notes = new NotesStore();
 
 async function update(next: Settings) {
   // Through `merge`, so the page can only ever store what the content scripts accept.
@@ -126,6 +128,22 @@ function cosmetics(): HTMLElement {
   return panel;
 }
 
+function notesItem(): HTMLElement {
+  const all = Object.entries(notes.all()).sort(([a], [b]) => a.localeCompare(b));
+  if (!all.length) return el('p', { className: 'hint block' }, 'None yet. Open someone’s user card in chat to add a nickname or a note.');
+  const wrap = el('div', { className: 'rules' });
+  for (const [login, entry] of all) {
+    const row = el('div', { className: 'rule' });
+    const nick = textInput(entry.nick, 'Nickname', (v) => void notes.set(login, { ...entry, nick: v }), `Nickname for ${login}`);
+    nick.maxLength = NICK_MAX;
+    const note = textInput(entry.note, 'Note', (v) => void notes.set(login, { ...entry, note: v }), `Note for ${login}`);
+    note.maxLength = NOTE_MAX;
+    row.append(el('span', { className: 'login' }, login), nick, note, removeButton(`Remove ${login}`, () => void notes.set(login, { nick: '', note: '' })));
+    wrap.append(row);
+  }
+  return wrap;
+}
+
 function itemNode(item: Item): HTMLElement {
   switch (item.kind) {
     case 'toggle':
@@ -147,6 +165,8 @@ function itemNode(item: Item): HTMLElement {
       return providers();
     case 'cosmetics':
       return cosmetics();
+    case 'notes':
+      return notesItem();
   }
 }
 
@@ -181,6 +201,8 @@ function render() {
 
 async function main() {
   settings = await load(ext().storage.sync);
+  await notes.load(ext().storage.local);
+  notes.subscribe(render);
   const fromHash = location.hash.slice(1);
   if (PAGES.some((p) => p.id === fromHash)) page = fromHash;
   render();
