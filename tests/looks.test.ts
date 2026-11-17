@@ -12,7 +12,7 @@ import type { Site } from '../src/sites/index';
 import { kick } from '../src/sites/kick';
 import { twitch } from '../src/sites/twitch';
 
-const info: MessageInfo = { sender: null, login: null, text: '' };
+const info: MessageInfo = { sender: null, login: null, text: '', at: new Date(2026, 10, 17, 9, 5, 7).getTime() };
 
 function ctxFor(site: Site, chat: Partial<ChatSettings>, now = () => new Date(2026, 10, 17, 9, 5, 7).getTime()): FeatureContext {
   return {

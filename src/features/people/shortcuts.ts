@@ -20,7 +20,11 @@ export function shortcuts(): Feature {
       ctx = c;
       handler = (e) => {
         if (!ctx || e.isComposing || e.ctrlKey || e.metaKey) return;
-        if (e.altKey && !e.shiftKey && e.code === 'KeyE') {
+        if (e.altKey && !e.shiftKey) {
+          // A dead key (Mac é) is a typed character, not our shortcut.
+          if (e.code !== 'KeyE' || e.key === 'Dead') return;
+          // Only claim the key while the menu exists to answer it.
+          if (!ctx.doc.documentElement.hasAttribute('data-cyextv-emote-menu')) return;
           e.preventDefault();
           ctx.doc.dispatchEvent(new CustomEvent('cyextv:emote-menu'));
         } else if (e.key === '/' && !e.altKey && !isTyping(ctx.doc.activeElement)) {
@@ -30,10 +34,11 @@ export function shortcuts(): Feature {
           input.focus();
         }
       };
-      c.doc.addEventListener('keydown', handler);
+      // Capture: it must work while focus is in the menu's own search box.
+      c.doc.addEventListener('keydown', handler, true);
     },
     stop() {
-      if (ctx && handler) ctx.doc.removeEventListener('keydown', handler);
+      if (ctx && handler) ctx.doc.removeEventListener('keydown', handler, true);
       handler = null;
       ctx = null;
     },

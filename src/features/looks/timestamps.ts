@@ -32,11 +32,12 @@ export function timestamps(): Feature {
       style.textContent = CSS;
       c.doc.head.append(style);
     },
-    message(message) {
-      if (!ctx || message.querySelector('.cyextv-time')) return;
+    message(message, info) {
+      // 0: a line from before we started, with no real time.
+      if (!ctx || info.at === 0 || message.querySelector('.cyextv-time')) return;
       const slot = ctx.site.timeSlot(message);
       if (!slot) return;
-      const at = new Date(ctx.now());
+      const at = new Date(info.at);
       const span = ctx.doc.createElement('span');
       span.className = 'cyextv-time';
       span.textContent = formatTime(at, ctx.settings.chat.clock, ctx.settings.chat.seconds);

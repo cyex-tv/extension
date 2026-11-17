@@ -82,7 +82,7 @@ describe('site user cards', () => {
 });
 
 describe('usercardMessages', () => {
-  const info = (login: string, text: string) => ({ sender: null, login, text });
+  const info = (login: string, text: string) => ({ sender: null, login, text, at: 1 });
 
   it('adds a section to the open card with the latest messages, once', async () => {
     const f = usercardMessages();
@@ -168,6 +168,7 @@ describe('shortcuts', () => {
   };
 
   it('Alt+E fires the emote menu event', () => {
+    document.documentElement.dataset.cyextvEmoteMenu = '';
     const f = shortcuts();
     f.start?.(ctx());
     let n = 0;

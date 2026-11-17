@@ -43,11 +43,13 @@ export function richTooltips(): Feature {
   let style: HTMLStyleElement | null = null;
   let card: HTMLElement | null = null;
   let remove: (() => void) | null = null;
+  let docRef: Document | null = null;
   return {
     id: 'richTooltips',
     enabled: (s) => s.chat.richTooltips && s.tooltips,
     start(ctx) {
       const doc = ctx.doc;
+      docRef = doc;
       style = doc.createElement('style');
       style.id = 'cyextv-richTooltips';
       style.textContent = CSS;
@@ -111,6 +113,12 @@ export function richTooltips(): Feature {
       };
     },
     stop() {
+      // Titles moved aside on hover go back.
+      docRef?.querySelectorAll<HTMLElement>('[data-cyextv-tip]').forEach((el) => {
+        if (!el.title) el.title = el.dataset.cyextvTip ?? '';
+        delete el.dataset.cyextvTip;
+      });
+      docRef = null;
       remove?.();
       remove = null;
       style?.remove();

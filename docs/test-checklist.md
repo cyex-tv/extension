@@ -40,6 +40,7 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 - [ ] "All settings" in the popup opens the settings page in a tab; its sidebar shows Chat, Emotes and badges, Highlights, Ignores, Usercard, Clean up, Channels.
 - [ ] A change on the settings page applies to open chats without a reload, and survives closing the browser.
 - [ ] Rules (Highlights → Words, Ignores → Words) can be added, edited and removed; an empty pattern isn't saved.
+- [ ] Changing any setting keeps highlights, timestamps and hidden messages on the lines already in chat.
 
 ## Chat looks
 

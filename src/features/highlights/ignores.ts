@@ -33,11 +33,16 @@ export function ignores(): Feature {
       if (!rules.swaps || rules.isOwn(info.login)) return;
       const body = ctx.site.body(message);
       if (!body) return;
+      let changed = false;
       for (const node of textNodes(body, ctx.site.skip)) {
         const text = node.nodeValue ?? '';
         const swapped = rules.swap(text);
-        if (swapped !== text) node.nodeValue = swapped;
+        if (swapped !== text) {
+          node.nodeValue = swapped;
+          changed = true;
+        }
       }
+      return changed ? true : undefined;
     },
     stop() {
       ctx?.doc.getElementById(STYLE_ID)?.remove();

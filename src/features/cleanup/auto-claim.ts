@@ -13,7 +13,6 @@ export function clickable(button: HTMLElement | null): button is HTMLElement {
 
 export function autoClaim(): Feature {
   let timer: ReturnType<typeof setInterval> | null = null;
-  let observer: MutationObserver | null = null;
   return {
     id: 'autoClaim',
     providedBy: ['7tv', 'bttv', 'ffz'],
@@ -29,15 +28,10 @@ export function autoClaim(): Feature {
         button.click();
       };
       timer = setInterval(check, POLL_MS);
-      // The button appears under the points area; watch for it without reading layout.
-      observer = new MutationObserver(check);
-      observer.observe(ctx.doc.body, { childList: true, subtree: true });
     },
     stop() {
       if (timer) clearInterval(timer);
       timer = null;
-      observer?.disconnect();
-      observer = null;
     },
   };
 }

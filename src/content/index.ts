@@ -17,13 +17,20 @@ export const fetchJson: FetchJson = async (url, init) => {
 
 let app: App | null = null;
 
+let generation = 0;
+
 async function start() {
-  app?.stop();
+  // Saved twice quickly: only the latest start may finish.
+  const mine = ++generation;
   const site = location.hostname.endsWith('kick.com') ? kick : twitch;
   const settings = await load(ext().storage.sync);
-  app = new App({ site, fetch: fetchJson, settings, local: ext().storage.local });
-  await Promise.all([app.loadGlobals(), app.loadBadges()]);
-  app.start();
+  if (mine !== generation) return;
+  const next = new App({ site, fetch: fetchJson, settings, local: ext().storage.local });
+  await Promise.all([next.loadGlobals(), next.loadBadges()]);
+  if (mine !== generation) return;
+  app?.stop();
+  app = next;
+  next.start();
 }
 
 ext().storage.onChanged.addListener((changes, area) => {

@@ -31,6 +31,8 @@ export type MessageInfo = {
   login: string | null;
   /** The message text as typed (emotes as their names), read before emotes are drawn. */
   text: string;
+  /** When the message first reached us (ms); 0 for lines already on the page at load. */
+  at: number;
 };
 
 export interface Feature {
@@ -43,7 +45,7 @@ export interface Feature {
   /** Whether the user switched it on. */
   enabled(s: Settings): boolean;
   start?(ctx: FeatureContext): void;
-  /** Before emotes are drawn. Returning `false` hides the message and skips the rest. */
+  /** Before emotes are drawn. Returning `false` hides the message and skips the rest; `true` says the body's words were changed. */
   prepare?(message: Element, info: MessageInfo): boolean | void;
   /** After emotes and badges are drawn. */
   message?(message: Element, info: MessageInfo): void;

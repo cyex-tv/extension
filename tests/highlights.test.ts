@@ -213,7 +213,7 @@ function run(feature: Feature, ctx: FeatureContext, html: string, selector = '[d
   document.body.innerHTML = html;
   const m = document.querySelector(selector)!;
   const body = ctx.site.body(m);
-  const info = { sender: null, login: ctx.site.login(m), text: body?.textContent?.replace(/\s+/g, ' ').trim() ?? '' };
+  const info = { sender: null, login: ctx.site.login(m), text: body?.textContent?.replace(/\s+/g, ' ').trim() ?? '', at: 1 };
   const hidden = feature.prepare?.(m, info) === false;
   if (!hidden) feature.message?.(m, info);
   return { m, hidden, body };
@@ -348,7 +348,7 @@ describe('highlights feature', () => {
     expect(row.textContent).toBe('First message');
     expect((m as HTMLElement).dataset.cyextvHl).toBe('first');
     expect((m as HTMLElement).style.getPropertyValue('--cyextv-hl')).toBe('#33d68f');
-    f.message!(m, { sender: null, login: 'amy', text: 'hi' });
+    f.message!(m, { sender: null, login: 'amy', text: 'hi', at: 1 });
     expect(m.querySelectorAll('.cyextv-context')).toHaveLength(1);
     f.stop!();
     expect(m.querySelector('.cyextv-context')).toBeNull();

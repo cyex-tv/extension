@@ -208,7 +208,8 @@ export function emoteMenu(): Feature {
   }
 
   function onPanelKey(e: KeyboardEvent) {
-    // The site has its own shortcuts; keys typed here are ours.
+    // The site has its own shortcuts; keys typed here are ours. Alt+E goes on to the shortcut that toggles the menu.
+    if (e.altKey && e.code === 'KeyE') return;
     e.stopPropagation();
     if (e.key === 'Escape') {
       e.preventDefault();
@@ -358,6 +359,7 @@ export function emoteMenu(): Feature {
       style.textContent = CSS;
       c.doc.head.append(style);
       channelId = c.channel()?.id ?? null;
+      c.doc.documentElement.dataset.cyextvEmoteMenu = '';
       ensureButton();
       timer = setInterval(ensureButton, CHECK_MS);
       c.doc.addEventListener(MENU_EVENT, onEvent);
@@ -365,6 +367,7 @@ export function emoteMenu(): Feature {
     stop() {
       if (!ctx) return;
       ctx.doc.removeEventListener(MENU_EVENT, onEvent);
+      delete ctx.doc.documentElement.dataset.cyextvEmoteMenu;
       if (timer) clearInterval(timer);
       timer = null;
       close(false);
