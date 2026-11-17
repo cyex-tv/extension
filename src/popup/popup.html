@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="color-scheme" content="dark" />
+    <title>cyex.tv</title>
+    <link rel="stylesheet" href="popup.css" />
+  </head>
+  <body>
+    <header class="bar">
+      <svg class="mark" viewBox="3 5 25 22" width="20" height="18" aria-hidden="true">
+        <rect x="3" y="5" width="15" height="6" fill="#e8e8ea" />
+        <rect x="10" y="13" width="18" height="6" fill="#145aff" />
+        <rect x="3" y="21" width="15" height="6" fill="#e8e8ea" />
+      </svg>
+      <span class="title">cyex.tv</span>
+    </header>
+
+    <main>
+      <section>
+        <h2 class="label">This channel</h2>
+        <div id="channel" class="panel"></div>
+      </section>
+
+      <section>
+        <h2 class="label">Emotes</h2>
+        <p class="hint">When two providers use the same name, the higher one wins.</p>
+        <div id="emotes" class="panel"></div>
+      </section>
+
+      <section>
+        <h2 class="label">Badges and paints</h2>
+        <p class="hint">Coming in the next version.</p>
+        <div id="cosmetics" class="panel"></div>
+      </section>
+
+      <section>
+        <h2 class="label">Animations</h2>
+        <div id="animations" class="seg" role="group" aria-label="Animations">
+          <button type="button" value="on">On</button>
+          <button type="button" value="hover">On hover</button>
+          <button type="button" value="off">Off</button>
+        </div>
+      </section>
+
+      <section>
+        <h2 class="label">More</h2>
+        <div id="more" class="panel"></div>
+      </section>
+    </main>
+
+    <footer class="fine">Not affiliated with Twitch, Kick, 7TV, BetterTTV or FrankerFaceZ.</footer>
+    <script src="popup.js"></script>
+  </body>
+</html>

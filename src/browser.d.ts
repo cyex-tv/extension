@@ -27,6 +27,10 @@ interface ExtApi {
     };
     getURL(path: string): string;
   };
+  tabs: {
+    /** With `activeTab`, the current tab's `url` is visible once the user opened the popup. */
+    query(info: { active: boolean; currentWindow: boolean }): Promise<{ id?: number; url?: string }[]>;
+  };
   storage: {
     sync: ExtStorageArea;
     local: ExtStorageArea;
