@@ -62,7 +62,7 @@ function render() {
   box.replaceChildren(
     ...mentions.slice(0, SHOWN_MENTIONS).map((m) => {
       const a = el('a', { className: 'mention', href: channelUrl(m.platform, m.channel), target: '_blank', rel: 'noreferrer' });
-      a.append(el('span', { className: 'meta' }, el('b', {}, m.login), `in ${m.channel}`, mentionTime(m.at, Date.now())), el('span', { className: 'body' }, m.text));
+      a.append(el('span', { className: 'meta' }, el('b', {}, m.login), el('span', {}, `in ${m.channel}`), el('span', {}, mentionTime(m.at, Date.now()))), el('span', { className: 'body' }, m.text));
       return a;
     }),
   );

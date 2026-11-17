@@ -20,9 +20,13 @@
       <span class="sub">Settings</span>
     </header>
     <div class="layout">
-      <nav id="nav" aria-label="Settings pages"></nav>
+      <aside class="side">
+        <input id="search" class="input search" type="search" placeholder="Search settings" aria-label="Search settings" autocomplete="off" spellcheck="false" />
+        <nav id="nav" aria-label="Settings pages"></nav>
+      </aside>
       <main id="page"></main>
     </div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <footer class="fine">Saved as you change them, in your browser’s synced storage. Not affiliated with Twitch, Kick, 7TV, BetterTTV or FrankerFaceZ.</footer>
     <script src="options.js"></script>
   </body>

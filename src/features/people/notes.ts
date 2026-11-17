@@ -79,6 +79,13 @@ export class NotesStore {
     await this.local?.set({ [NOTES_KEY]: next }).catch(() => {});
   }
 
+  /** Replaces every entry (an imported backup), and saves. */
+  async setAll(all: Notes): Promise<void> {
+    this.notes = readNotes(all);
+    for (const l of this.listeners) l();
+    await this.local?.set({ [NOTES_KEY]: this.notes }).catch(() => {});
+  }
+
   subscribe(fn: () => void): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);

@@ -5,6 +5,8 @@ What the extension does besides emotes, badges and paints, and why. The list was
 Columns: **Who has it** (7 = 7TV, F = FFZ, B = BTTV, D = cyex deck). **Twitch / Kick**: feasible in a content script on that site (yes, partly, no). **Effort** and **value**: S, M, L. **Decision**: built (with the PR group) or later, with the reason.
 
 Every feature has its own switch on the settings page (Chat, Emotes and badges, Highlights, Ignores, Usercard, Hide on Twitch, Hide on Kick, Channels), with defaults from cyex deck, except that sounds start off and anything the site already does itself starts off. A feature that 7TV, BTTV or FFZ also has is left to that extension when it is installed (no doubled emote menus or Tab handlers), unless "Draw anyway" is on.
+The settings page keeps all of this calm: three sidebar groups like cyex deck's (Chat, Page, Extension), a search across every page, one-line hints, "Reset" per section with undo, a keyboard shortcut list, and a backup file (export, import, reset everything) under About.
+
 On a fresh install a short welcome page opens (three steps: which emote providers, a starting look with a "Clean Twitch" preset, where settings are), with "Skip, use defaults" on every step. Completion is stored in storage.local; it can be reopened from Settings → About. The extension's own pages follow a Theme setting (dark by default, light, or like the system).
 Chat cosmetics from cyex.tv (badges before the name, name paints on it) come from `api.cyex.tv/v1/cosmetics` and follow changes live over the events socket. They have their own "cyex.tv" switch (on by default), work on Twitch and Kick, respect "Animations" (first frame when off) and "Readable colours", and win over a 7TV paint on the same name.
 

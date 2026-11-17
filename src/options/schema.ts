@@ -18,10 +18,29 @@ export type Item =
   /** Drawn by the page: nicknames and notes, from the device's storage. */
   | { kind: 'notes' }
   /** A link to another page, as a row with a button. */
-  | { kind: 'link'; label: string; hint?: string; href: string; text: string };
+  | { kind: 'link'; label: string; hint?: string; href: string; text: string }
+  /** A list of keys and what they do (read only). */
+  | { kind: 'shortcuts'; keys: [string, string][] }
+  /** Drawn by the page: export, import and reset everything. */
+  | { kind: 'backup' };
 
 export type Section = { title: string; hint?: string; items: Item[] };
-export type Page = { id: string; title: string; hint: string; sections: Section[] };
+/** The sidebar's groups, like cyex deck's settings. */
+export const GROUPS = ['Chat', 'Page', 'Extension'] as const;
+export type Group = (typeof GROUPS)[number];
+/** A 24-grid Lucide path for the sidebar. */
+export type Page = { id: string; title: string; hint: string; group: Group; icon: string; sections: Section[] };
+
+const PAGE_ICON = {
+  chat: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
+  emotes: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01',
+  highlights: 'm12 3 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.4l-5.2 2.7 1-5.8L3.5 9.2l5.9-.9z',
+  ignores: 'M9.9 4.2A10 10 0 0 1 12 4c7 0 10 8 10 8a17 17 0 0 1-2.2 3.2M6.6 6.6A16 16 0 0 0 2 12s3 8 10 8a9.7 9.7 0 0 0 5.4-1.6M2 2l20 20M14.1 14.1a3 3 0 1 1-4.2-4.2',
+  usercard: 'M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM19 8v6M22 11h-6',
+  hide: 'M3 3h18v18H3zM9 3v18M14 9h4M14 13h4',
+  channels: 'M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01',
+  about: 'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20zM12 16v-4M12 8h.01',
+};
 
 /** One section per group, in the catalog's order. */
 function hideSections(options: readonly HideOption[], prefix: string): Section[] {
@@ -37,6 +56,8 @@ const COLOR_HINT = 'Tints the message. Empty goes back to the default.';
 export const PAGES: Page[] = [
   {
     id: 'chat',
+    group: 'Chat',
+    icon: PAGE_ICON.chat,
     title: 'Chat',
     hint: 'How chat looks and behaves.',
     sections: [
@@ -110,12 +131,28 @@ export const PAGES: Page[] = [
       },
       {
         title: 'Keyboard',
-        items: [{ kind: 'toggle', key: 'chat.shortcuts', label: 'Shortcuts', hint: 'Alt+E opens the emote menu. / jumps to the message box.' }],
+        items: [
+          { kind: 'toggle', key: 'chat.shortcuts', label: 'Shortcuts', hint: 'Alt+E and / below. Tab completion has its own switch under Writing.' },
+          {
+            kind: 'shortcuts',
+            keys: [
+              ['Alt+E', 'Open or close the emote menu'],
+              ['/', 'Jump to the message box (outside a text field)'],
+              ['Tab', 'Finish an emote or chatter name; again for the next match'],
+              ['Shift+Tab', 'Go back to the previous match'],
+              ['Esc', 'Close the emote menu'],
+              ['Arrows, Enter', 'Move in the emote menu and add the emote'],
+              ['Right-click', 'Favorite an emote in the menu'],
+            ],
+          },
+        ],
       },
     ],
   },
   {
     id: 'emotes',
+    group: 'Chat',
+    icon: PAGE_ICON.emotes,
     title: 'Emotes and badges',
     hint: 'Which emotes and badges show, and from where.',
     sections: [
@@ -165,6 +202,8 @@ export const PAGES: Page[] = [
   },
   {
     id: 'highlights',
+    group: 'Chat',
+    icon: PAGE_ICON.highlights,
     title: 'Highlights',
     hint: 'Make messages stand out or ping you. Sounds start off.',
     sections: [
@@ -240,6 +279,8 @@ export const PAGES: Page[] = [
   },
   {
     id: 'ignores',
+    group: 'Chat',
+    icon: PAGE_ICON.ignores,
     title: 'Ignores',
     hint: 'Hide messages and people you don’t want to see. Only here, not on Twitch or Kick.',
     sections: [
@@ -269,6 +310,8 @@ export const PAGES: Page[] = [
   },
   {
     id: 'usercard',
+    group: 'Chat',
+    icon: PAGE_ICON.usercard,
     title: 'Usercard',
     hint: 'What the site’s user card shows besides its own.',
     sections: [
@@ -285,6 +328,8 @@ export const PAGES: Page[] = [
   },
   {
     id: 'twitch',
+    group: 'Page',
+    icon: PAGE_ICON.hide,
     title: 'Hide on Twitch',
     hint: 'Hide parts of Twitch you don’t use. Nothing is removed: switch a part back on and it returns at once.',
     sections: [
@@ -294,14 +339,31 @@ export const PAGES: Page[] = [
   },
   {
     id: 'kick',
+    group: 'Page',
+    icon: PAGE_ICON.hide,
     title: 'Hide on Kick',
     hint: 'Hide parts of Kick you don’t use. Nothing is removed: switch a part back on and it returns at once.',
     sections: hideSections(KICK_HIDE, 'chat.hideKick'),
   },
   {
+    id: 'channels',
+    group: 'Page',
+    icon: PAGE_ICON.channels,
+    title: 'Channels',
+    hint: 'Channels where the extension stays out.',
+    sections: [
+      {
+        title: 'Switched off',
+        items: [{ kind: 'names', key: 'disabledChannels', label: 'Channels', placeholder: 'twitch:name or kick:name', raw: true, hint: 'The popup switches the open channel on or off.' }],
+      },
+    ],
+  },
+  {
     id: 'about',
+    group: 'Extension',
+    icon: PAGE_ICON.about,
     title: 'About',
-    hint: 'This extension’s own pages, and where to start again.',
+    hint: 'Theme, backup, and the welcome page.',
     sections: [
       {
         title: 'Look',
@@ -320,19 +382,13 @@ export const PAGES: Page[] = [
         ],
       },
       {
+        title: 'Backup',
+        hint: 'A file with your settings and, from this device, nicknames and notes. Nothing else.',
+        items: [{ kind: 'backup' }],
+      },
+      {
         title: 'Welcome',
         items: [{ kind: 'link', label: 'Welcome page', hint: 'The three short steps from the first install, to pick emotes and a starting look again.', href: 'onboarding.html', text: 'Show the welcome page' }],
-      },
-    ],
-  },
-  {
-    id: 'channels',
-    title: 'Channels',
-    hint: 'Channels where the extension stays out.',
-    sections: [
-      {
-        title: 'Switched off',
-        items: [{ kind: 'names', key: 'disabledChannels', label: 'Channels', placeholder: 'twitch:name or kick:name', raw: true, hint: 'The popup switches the open channel on or off.' }],
       },
     ],
   },

@@ -52,7 +52,13 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 
 ## Settings page
 
-- [ ] "All settings" in the popup opens the settings page in a tab; its sidebar shows Chat, Emotes and badges, Highlights, Ignores, Usercard, Hide on Twitch, Hide on Kick, Channels.
+- [ ] "All settings" in the popup opens the settings page in a tab; its sidebar has three groups: Chat (Chat, Emotes and badges, Highlights, Ignores, Usercard), Page (Hide on Twitch, Hide on Kick, Channels) and Extension (About). The open page is bold with an accent icon, no filled box; picked options in segmented controls are bold accent text.
+- [ ] Search (top of the sidebar) finds settings on every page by name, hint or group ("prime", "side bar", "nickname"), shows them grouped as "Page · Section" and works in place; Esc clears it; nothing found says so.
+- [ ] A section with a changed setting shows "Reset" by its title; it puts only that section back and offers Undo in a note at the bottom for a few seconds.
+- [ ] Keyboard: toggling a switch with Space keeps focus on it; Tab order runs sidebar then page.
+- [ ] About → Backup: Export downloads `cyextv-settings-YYYY-MM-DD.json` (only changed settings, plus nicknames and notes); Import of that file restores them (with Undo); importing another JSON file or a non-JSON file says why and changes nothing. "Reset everything" asks for a second click and keeps nicknames and notes.
+- [ ] Chat → Keyboard lists every shortcut.
+- [ ] At 375 px the sidebar becomes a search box and a scrolling row of pages; nothing scrolls sideways.
 - [ ] A change on the settings page applies to open chats without a reload, and survives closing the browser.
 - [ ] Rules (Highlights → Words, Ignores → Words) can be added, edited and removed; an empty pattern isn't saved.
 - [ ] Changing any setting keeps highlights, timestamps and hidden messages on the lines already in chat.
