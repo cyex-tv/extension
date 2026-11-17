@@ -1,16 +1,19 @@
-// The settings page: a sidebar of pages, drawn from the schema. Every change is saved at once
-// (the content scripts pick it up); text fields save when they lose focus or on Enter.
+// The settings page: a sidebar of grouped pages with a search, drawn from the schema. Every change
+// is saved at once (the content scripts pick it up); text fields save when they lose focus or on
+// Enter. Each section can go back to its defaults, with an undo; About has the backup file.
 import { ext } from '../ext';
+import { NICK_MAX, NOTE_MAX, NotesStore } from '../features/people/notes';
 import { COSMETIC_LABEL, PROVIDER_LABEL, move, setCosmetics, setEmotes } from '../popup/model';
 import type { ProviderId } from '../providers/types';
-import { NICK_MAX, NOTE_MAX, NotesStore } from '../features/people/notes';
-import { type Settings, load, merge, save } from '../settings';
+import { DEFAULTS, type Settings, load, merge, save } from '../settings';
 import { ICON, el, icon, input as inputEl, segmented, toggle } from '../ui/dom';
 import { useTheme } from '../ui/theme';
-import { type Item, PAGES, type RuleField, getPath, setPath } from './schema';
+import { backupFile, isDefault, readBackup, resetSection, search } from './model';
+import { GROUPS, type Item, PAGES, type Page, type RuleField, type Section, getPath, setPath } from './schema';
 
 let settings: Settings;
 let page = PAGES[0]!.id;
+let query = '';
 const notes = new NotesStore();
 
 async function update(next: Settings) {
@@ -22,6 +25,8 @@ async function update(next: Settings) {
 }
 
 const set = (key: string, value: unknown) => update(setPath(settings, key, value));
+
+// --- Small parts -------------------------------------------------------------------------------
 
 function field(label: string, hint: string | undefined, control: Node): HTMLElement {
   const text = el('span', { className: 'text' }, el('span', { className: 'name' }, label));
@@ -40,10 +45,36 @@ function textInput(value: string, placeholder: string, onsave: (v: string) => vo
 }
 
 function removeButton(label: string, onclick: () => void): HTMLButtonElement {
-  const b = el('button', { type: 'button', className: 'icon', title: 'Remove', ariaLabel: label }, icon(ICON.x));
+  const b = el('button', { type: 'button', className: 'icon', title: label, ariaLabel: label }, icon(ICON.x));
   b.addEventListener('click', onclick);
   return b;
 }
+
+function button(text: string, className: string, onclick: () => void): HTMLButtonElement {
+  const b = el('button', { type: 'button', className }, text);
+  b.addEventListener('click', onclick);
+  return b;
+}
+
+let toastTimer: ReturnType<typeof setTimeout> | null = null;
+/** A short note at the bottom, with an optional undo (cyex-app toast). */
+function toast(text: string, undo?: () => void) {
+  const box = document.querySelector<HTMLElement>('#toast')!;
+  const kids: Node[] = [el('span', {}, text)];
+  if (undo) {
+    kids.push(
+      button('Undo', 'link', () => {
+        box.replaceChildren();
+        undo();
+      }),
+    );
+  }
+  box.replaceChildren(...kids);
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => box.replaceChildren(), 6000);
+}
+
+// --- Items -------------------------------------------------------------------------------------
 
 function namesItem(item: Extract<Item, { kind: 'names' }>): HTMLElement {
   const list = (getPath(settings, item.key) as string[]) ?? [];
@@ -53,10 +84,15 @@ function namesItem(item: Extract<Item, { kind: 'names' }>): HTMLElement {
   wrap.append(head);
   const chips = el('div', { className: 'chips' });
   for (const n of list) chips.append(el('span', { className: 'chip' }, n, removeButton(`Remove ${n}`, () => set(item.key, list.filter((x) => x !== n)))));
-  const add = textInput('', item.placeholder, (v) => {
-    const value = item.raw ? v.trim().toLowerCase() : v;
-    if (value) set(item.key, [...list, value]);
-  }, `Add to ${item.label}`);
+  const add = textInput(
+    '',
+    item.placeholder,
+    (v) => {
+      const value = item.raw ? v.trim().toLowerCase() : v;
+      if (value) void set(item.key, [...list, value]);
+    },
+    `Add to ${item.label}`,
+  );
   wrap.append(chips, add);
   return wrap;
 }
@@ -90,12 +126,7 @@ function rulesItem(item: Extract<Item, { kind: 'rules' }>): HTMLElement {
   rules.forEach((rule, i) => {
     const row = el('div', { className: 'rule' });
     for (const f of item.fields) {
-      row.append(
-        ruleControl(f, rule, (v) => {
-          const next = rules.map((r, j) => (j === i ? { ...r, [f.key]: v } : r));
-          void set(item.key, next);
-        }),
-      );
+      row.append(ruleControl(f, rule, (v) => void set(item.key, rules.map((r, j) => (j === i ? { ...r, [f.key]: v } : r)))));
     }
     row.append(removeButton('Remove rule', () => set(item.key, rules.filter((_, j) => j !== i))));
     wrap.append(row);
@@ -146,6 +177,67 @@ function notesItem(): HTMLElement {
   return wrap;
 }
 
+function shortcutsItem(item: Extract<Item, { kind: 'shortcuts' }>): HTMLElement {
+  const dl = el('dl', { className: 'keys' });
+  for (const [k, what] of item.keys) dl.append(el('dt', {}, ...k.split(/(\+|, )/).map((p) => (p === '+' || p === ', ' ? p : el('kbd', {}, p)))), el('dd', {}, what));
+  return dl;
+}
+
+let resetArmed: ReturnType<typeof setTimeout> | null = null;
+function backupItem(): HTMLElement {
+  const exportButton = button('Export', 'btn', () => {
+    const file = backupFile(settings, notes.all(), new Date());
+    const url = URL.createObjectURL(new Blob([file.text], { type: 'application/json' }));
+    const a = el('a', { href: url, download: file.name });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    toast(`Saved ${file.name}.`);
+  });
+  const picker = inputEl({ type: 'file' });
+  picker.accept = 'application/json,.json';
+  picker.hidden = true;
+  picker.addEventListener('change', async () => {
+    const f = picker.files?.[0];
+    if (!f) return;
+    const result = readBackup(await f.text());
+    picker.value = '';
+    if (!result.ok) return toast(result.error);
+    const before = settings;
+    const beforeNotes = notes.all();
+    if (result.notes) await notes.setAll(result.notes);
+    await update(result.settings);
+    toast('Imported.', () => {
+      void notes.setAll(beforeNotes);
+      void update(before);
+    });
+  });
+  const importButton = button('Import', 'btn', () => picker.click());
+  const reset = button('Reset everything', 'btn danger', () => {
+    if (!resetArmed) {
+      reset.textContent = 'Click again to reset';
+      resetArmed = setTimeout(() => {
+        resetArmed = null;
+        reset.textContent = 'Reset everything';
+      }, 4000);
+      return;
+    }
+    clearTimeout(resetArmed);
+    resetArmed = null;
+    const before = settings;
+    void update(DEFAULTS);
+    toast('Every setting is back to its default.', () => void update(before));
+  });
+  return el(
+    'div',
+    { className: 'panel' },
+    field('Export', 'Downloads a .json file.', exportButton),
+    field('Import', 'Replaces your settings with the file’s.', el('span', {}, importButton, picker)),
+    field('Reset everything', 'Every setting back to its default. Nicknames and notes stay.', reset),
+  );
+}
+
 function itemNode(item: Item): HTMLElement {
   switch (item.kind) {
     case 'toggle':
@@ -154,7 +246,7 @@ function itemNode(item: Item): HTMLElement {
       return field(item.label, item.hint, segmented(item.label, item.options, String(getPath(settings, item.key)), (v) => set(item.key, v)));
     case 'number': {
       const value = Number(getPath(settings, item.key)) || 0;
-      const input = inputEl({ type: 'number', min: String(item.min), max: String(item.max), value: value ? String(value) : '', placeholder: item.zero ?? '', className: 'input num' });
+      const input = inputEl({ type: 'number', min: String(item.min), max: String(item.max), value: value || !item.zero ? String(value) : '', placeholder: item.zero ?? '', className: 'input num' });
       input.setAttribute('aria-label', item.label);
       input.addEventListener('change', () => set(item.key, input.value === '' ? 0 : Number(input.value)));
       return field(item.label, item.hint, el('span', { className: 'unit' }, input, item.unit));
@@ -169,6 +261,10 @@ function itemNode(item: Item): HTMLElement {
       return cosmetics();
     case 'notes':
       return notesItem();
+    case 'shortcuts':
+      return shortcutsItem(item);
+    case 'backup':
+      return backupItem();
     case 'link': {
       const a = el('a', { className: 'btn', href: item.href, target: '_blank', rel: 'noreferrer' }, item.text);
       return field(item.label, item.hint, a);
@@ -176,33 +272,85 @@ function itemNode(item: Item): HTMLElement {
   }
 }
 
-function render() {
-  const nav = document.querySelector('#nav')!;
-  nav.replaceChildren(
-    ...PAGES.map((p) => {
-      const b = el('button', { type: 'button', className: 'nav-item' }, el('span', { className: 'name' }, p.title));
-      if (p.id === page) b.setAttribute('aria-current', 'page');
+// --- Sections and pages ------------------------------------------------------------------------
+
+/** Gives each focusable control a stable name, so focus survives a redraw. */
+function nameControls(root: Element, prefix: string) {
+  root.querySelectorAll<HTMLElement>('button, input, a[href], [tabindex]').forEach((c, i) => (c.dataset.fk = `${prefix}#${i}`));
+}
+
+function sectionNode(p: Page, s: Section, items: Item[], withPage: boolean): HTMLElement {
+  const title = withPage ? `${p.title} · ${s.title}` : s.title;
+  const head = el('div', { className: 'section-head' }, el('h2', { className: 'label' }, title));
+  if (!isDefault(settings, s)) {
+    const r = button('Reset', 'link', () => {
+      const before = settings;
+      void update(resetSection(settings, s));
+      toast(`${s.title} is back to the defaults.`, () => void update(before));
+    });
+    r.setAttribute('aria-label', `Reset ${s.title} to the defaults`);
+    r.dataset.fk = `reset:${p.id}:${s.title}`;
+    head.append(r);
+  }
+  const sec = el('section', {}, head);
+  if (s.hint) sec.append(el('p', { className: 'hint' }, s.hint));
+  // Switches, choices and numbers in a row share one panel; lists and the rest stand alone.
+  const stack = el('div', { className: 'stack' });
+  let panel: HTMLElement | null = null;
+  items.forEach((item, i) => {
+    const node = itemNode(item);
+    nameControls(node, `${p.id}:${s.title}:${'key' in item ? item.key : `${item.kind}${i}`}`);
+    if (item.kind === 'toggle' || item.kind === 'choice' || item.kind === 'number' || item.kind === 'link') {
+      if (!panel) stack.append((panel = el('div', { className: 'panel' })));
+      panel.append(node);
+    } else {
+      panel = null;
+      stack.append(node);
+    }
+  });
+  sec.append(stack);
+  return sec;
+}
+
+function navNode(): HTMLElement[] {
+  return GROUPS.map((g) => {
+    const list = el('div', { className: 'nav-group' }, el('p', { className: 'label nav-label' }, g));
+    for (const p of PAGES.filter((x) => x.group === g)) {
+      const b = el('button', { type: 'button', className: 'nav-item' }, icon(p.icon), el('span', { className: 'name' }, p.title));
+      b.dataset.fk = `nav:${p.id}`;
+      if (p.id === page && !query) b.setAttribute('aria-current', 'page');
       b.addEventListener('click', () => {
         page = p.id;
-        location.hash = p.id;
+        query = '';
+        document.querySelector<HTMLInputElement>('#search')!.value = '';
+        history.replaceState(null, '', `#${p.id}`);
         render();
+        document.querySelector<HTMLElement>('#page h1')?.focus();
       });
-      return b;
-    }),
-  );
-  const current = PAGES.find((p) => p.id === page) ?? PAGES[0]!;
+      list.append(b);
+    }
+    return list;
+  });
+}
+
+function render() {
+  const focused = (document.activeElement as HTMLElement | null)?.dataset?.fk;
+  document.querySelector('#nav')!.replaceChildren(...navNode());
   const main = document.querySelector('#page')!;
-  main.replaceChildren(
-    el('header', { className: 'page-head' }, el('h1', {}, current.title), el('p', { className: 'hint' }, current.hint)),
-    ...current.sections.map((s) => {
-      const sec = el('section', {}, el('h2', { className: 'label' }, s.title));
-      if (s.hint) sec.append(el('p', { className: 'hint' }, s.hint));
-      const simple = s.items.every((i) => i.kind === 'toggle' || i.kind === 'choice' || i.kind === 'number');
-      const items = s.items.map(itemNode);
-      sec.append(simple ? el('div', { className: 'panel' }, ...items) : el('div', { className: 'stack' }, ...items));
-      return sec;
-    }),
-  );
+  if (query.trim()) {
+    const hits = search(PAGES, query);
+    main.replaceChildren(
+      el('header', { className: 'page-head' }, el('h1', { tabIndex: -1 }, 'Search'), el('p', { className: 'hint' }, hits.length ? `Settings matching “${query.trim()}”.` : '')),
+      ...(hits.length ? hits.map((h) => sectionNode(h.page, h.section, h.items, true)) : [el('p', { className: 'empty' }, `Nothing matches “${query.trim()}”. Try a shorter word.`)]),
+    );
+  } else {
+    const current = PAGES.find((p) => p.id === page) ?? PAGES[0]!;
+    main.replaceChildren(
+      el('header', { className: 'page-head' }, el('h1', { tabIndex: -1 }, current.title), el('p', { className: 'hint' }, current.hint)),
+      ...current.sections.map((s) => sectionNode(current, s, s.items, false)),
+    );
+  }
+  if (focused) [...document.querySelectorAll<HTMLElement>('[data-fk]')].find((e) => e.dataset.fk === focused)?.focus();
 }
 
 async function main() {
@@ -212,6 +360,30 @@ async function main() {
   notes.subscribe(render);
   const fromHash = location.hash.slice(1);
   if (PAGES.some((p) => p.id === fromHash)) page = fromHash;
+  const box = document.querySelector<HTMLInputElement>('#search')!;
+  box.addEventListener('input', () => {
+    query = box.value;
+    render();
+  });
+  box.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && box.value) {
+      e.preventDefault();
+      box.value = '';
+      query = '';
+      render();
+    }
+  });
+  // Another tab (or the popup) changed the settings: show them.
+  ext().storage.onChanged.addListener((changes, area) => {
+    if (area === 'sync' && 'settings' in changes) {
+      void load(ext().storage.sync).then((s) => {
+        if (JSON.stringify(s) === JSON.stringify(settings)) return;
+        settings = s;
+        useTheme(document, s.theme);
+        render();
+      });
+    }
+  });
   render();
 }
 
