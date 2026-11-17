@@ -163,7 +163,8 @@ export function usercardMessages(): Feature {
         shown = null;
       }
       log.add(info.login, info.text, ctx.now());
-      if (shown?.login === info.login) schedule();
+      // While a card is open: its count, or the person it shows, may have changed.
+      if (shown) schedule();
     },
     stop() {
       observer?.disconnect();

@@ -24,7 +24,11 @@ function ctx(site = twitch): FeatureContext {
   };
 }
 
-const raf = () => new Promise((r) => setTimeout(r, 30));
+// After the observer's microtask, the feature's frame runs before ours (frames run in order).
+const raf = async () => {
+  await Promise.resolve();
+  await new Promise((r) => requestAnimationFrame(() => r(null)));
+};
 
 beforeEach(() => {
   document.head.innerHTML = '';
