@@ -21,7 +21,7 @@ async function start() {
   app?.stop();
   const site = location.hostname.endsWith('kick.com') ? kick : twitch;
   const settings = await load(ext().storage.sync);
-  app = new App({ site, fetch: fetchJson, settings });
+  app = new App({ site, fetch: fetchJson, settings, local: ext().storage.local });
   await Promise.all([app.loadGlobals(), app.loadBadges()]);
   app.start();
 }

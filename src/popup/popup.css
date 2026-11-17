@@ -70,4 +70,8 @@ section { display: grid; gap: 6px; }
 .seg button:hover { color: var(--text); }
 .seg button[aria-pressed='true'] { background: var(--accent-dim); color: var(--accent-text); }
 
+
+.wide { display: block; width: 100%; height: 36px; border: 0; border-top: 1px solid var(--border); background: none; color: var(--accent-text); font-weight: 600; cursor: pointer; }
+.wide:hover { background: var(--surface-hover); }
+
 @media (prefers-reduced-motion: reduce) { * { transition-duration: 0s !important; } }

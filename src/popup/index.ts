@@ -2,44 +2,13 @@
 import { ext } from '../ext';
 import type { ProviderId } from '../providers/types';
 import { type Animations, type Settings, load, save } from '../settings';
+import { ICON, el, icon, toggle } from '../ui/dom';
 import { COSMETIC_LABEL, PROVIDER_LABEL, channelKey, move, setAnimations, setChannel, setCosmetics, setEmotes } from './model';
 
 const $ = <T extends Element>(sel: string) => document.querySelector<T>(sel)!;
 
 let settings: Settings;
 let here: string | null = null;
-
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLElementTagNameMap[K]> = {}, ...kids: (Node | string)[]) {
-  const node = Object.assign(document.createElement(tag), props);
-  node.append(...kids);
-  return node;
-}
-
-/** A labelled switch (cyex-app toggle): a checkbox styled as a track with a knob. */
-function toggle(label: string, checked: boolean, onchange: (on: boolean) => void, hint?: string) {
-  const input = document.createElement('input');
-  input.type = 'checkbox';
-  input.className = 'switch';
-  input.checked = checked;
-  input.addEventListener('change', () => onchange(input.checked));
-  const text = el('span', { className: 'text' }, el('span', { className: 'name' }, label));
-  if (hint) text.append(el('span', { className: 'hint' }, hint));
-  return el('label', { className: 'row' }, text, input);
-}
-
-/** A 14 px stroke chevron (Lucide path). */
-function chevron(d: string): SVGSVGElement {
-  const ns = 'http://www.w3.org/2000/svg';
-  const svg = document.createElementNS(ns, 'svg');
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('width', '14');
-  svg.setAttribute('height', '14');
-  svg.setAttribute('aria-hidden', 'true');
-  const path = document.createElementNS(ns, 'path');
-  path.setAttribute('d', d);
-  svg.append(path);
-  return svg;
-}
 
 async function update(next: Settings) {
   settings = next;
@@ -63,8 +32,8 @@ function render() {
   emotes.replaceChildren(
     ...settings.order.map((id: ProviderId, i) => {
       const row = toggle(PROVIDER_LABEL[id], settings.emotes[id], (on) => update(setEmotes(settings, id, on)));
-      const up = el('button', { type: 'button', className: 'icon', title: 'Wins earlier', ariaLabel: `Move ${PROVIDER_LABEL[id]} up`, disabled: i === 0 }, chevron('m6 15 6-6 6 6'));
-      const down = el('button', { type: 'button', className: 'icon', title: 'Wins later', ariaLabel: `Move ${PROVIDER_LABEL[id]} down`, disabled: i === settings.order.length - 1 }, chevron('m6 9 6 6 6-6'));
+      const up = el('button', { type: 'button', className: 'icon', title: 'Wins earlier', ariaLabel: `Move ${PROVIDER_LABEL[id]} up`, disabled: i === 0 }, icon(ICON.up));
+      const down = el('button', { type: 'button', className: 'icon', title: 'Wins later', ariaLabel: `Move ${PROVIDER_LABEL[id]} down`, disabled: i === settings.order.length - 1 }, icon(ICON.down));
       up.addEventListener('click', (e) => (e.preventDefault(), update(move(settings, id, -1))));
       down.addEventListener('click', (e) => (e.preventDefault(), update(move(settings, id, 1))));
       row.insertBefore(el('span', { className: 'order' }, up, down), row.lastChild);
@@ -88,6 +57,9 @@ function render() {
     toggle('Tooltips', settings.tooltips, (on) => update({ ...settings, tooltips: on }), 'Name, provider and author on hover.'),
     toggle('Draw anyway', settings.overrideOthers, (on) => update({ ...settings, overrideOthers: on }), 'Also show a provider’s emotes when its own extension is installed.'),
   );
+  const all = el('button', { type: 'button', className: 'wide' }, 'All settings');
+  all.addEventListener('click', () => void ext().runtime.openOptionsPage());
+  more.append(all);
 }
 
 async function main() {

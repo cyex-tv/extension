@@ -26,6 +26,7 @@ interface ExtApi {
       ): void;
     };
     getURL(path: string): string;
+    openOptionsPage(): Promise<void>;
   };
   tabs: {
     /** With `activeTab`, the current tab's `url` is visible once the user opened the popup. */

@@ -45,3 +45,13 @@ export function kickSender(el: Element): string | null {
     return idText(s?.id);
   });
 }
+
+/** Whether a Twitch chat line is the sender's first message in the channel: `props.message.isFirstMsg`. */
+export function twitchFirst(el: Element): boolean {
+  return (
+    climb(el, 8, (p) => {
+      const m = p.message as { isFirstMsg?: unknown } | undefined;
+      return m && typeof m.isFirstMsg === 'boolean' ? m.isFirstMsg : null;
+    }) === true
+  );
+}
