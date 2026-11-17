@@ -249,7 +249,7 @@ function type(site: Site, text: string): { input: HTMLElement; node: Text } {
 const msg = (login: string, display?: string) => {
   const m = document.createElement('div');
   if (display) m.innerHTML = `<span class="chat-author__display-name">${display}</span><button title="${login}">${display}</button>`;
-  return { m, info: { sender: null, login, text: '' } };
+  return { m, info: { sender: null, login, text: '', at: 1 } };
 };
 
 describe.each([

@@ -24,6 +24,9 @@ export const BADGE_REFRESH_MS = 30 * 60_000;
 const BADGE_SOURCES: Partial<Record<BadgeProvider, (f: FetchJson) => Promise<BadgeMap>>> = { cyexdeck: cyexDeck, bttv: bttvBadges, ffz: ffzBadges };
 const PERSONAL_TTL_MS = 10 * 60_000;
 
+/** When each message first reached us (0: it was already on the page at load); shared across Apps so a restart keeps the times. */
+const arrived = new WeakMap<Element, number>();
+
 export type AppDeps = {
   site: Site;
   fetch: FetchJson;
@@ -54,6 +57,10 @@ export class App {
   /** 7TV badges and paints seen in the current channel. */
   private seventvLooks: SeventvCosmetics | null = null;
   private doc: Document;
+  /** Set by stop(): queued work (frames, timers, awaits) checks it and quits. */
+  private stopped = false;
+  /** Messages the features have already seen (per App: a new App runs them again). */
+  private seen = new WeakSet<Element>();
   private now: () => number;
 
   constructor(private deps: AppDeps) {
@@ -140,12 +147,15 @@ export class App {
   /** Loads the channel's sets when the channel changed. True when it did. */
   async syncChannel(): Promise<boolean> {
     const ch = await this.deps.site.channel();
+    if (this.stopped) return false;
     if (!ch || (this.channel && ch.id === this.channel.id && ch.platform === this.channel.platform)) return false;
     this.channel = ch;
     // Another channel: its own 7TV cosmetics.
     this.seventvLooks = null;
-    if (!(await this.loadChannel(ch, false))) return false;
-    this.allowPersonal = this.enabled().includes('cyextv') ? await allowsPersonal(this.deps.fetch, ch.platform, ch.id).catch(() => false) : false;
+    if (!(await this.loadChannel(ch, false)) || this.stopped) return false;
+    const allow = this.enabled().includes('cyextv') ? await allowsPersonal(this.deps.fetch, ch.platform, ch.id).catch(() => false) : false;
+    if (this.stopped) return false;
+    this.allowPersonal = allow;
     this.personalSeen.clear();
     this.watchLive(ch);
     return true;
@@ -155,7 +165,7 @@ export class App {
   private async loadChannel(ch: Channel, fresh: boolean): Promise<boolean> {
     const on = this.enabled();
     const results = await Promise.allSettled(on.map((id) => PROVIDERS[id].channel(this.deps.fetch, ch.platform, ch.id, fresh)));
-    if (this.channel !== ch) return false;
+    if (this.channel !== ch || this.stopped) return false;
     this.channelSets = results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
     this.rebuild();
     return true;
@@ -163,7 +173,7 @@ export class App {
 
   /** Live updates for the channel's cyex.tv and 7TV sets: a change reloads them. */
   private watchLive(ch: Channel) {
-    if (!this.live) return;
+    if (this.stopped || !this.live) return;
     const on = this.enabled();
     if (this.seventvLooks === null || !this.seventvCosmeticsOn()) this.seventvLooks = this.seventvCosmeticsOn() ? new SeventvCosmetics(ch.platform) : null;
     const setOf = (p: ProviderId) => this.channelSets.find((s) => s.provider === p)?.setId;
@@ -179,11 +189,11 @@ export class App {
         looks: (ids) => this.relook(ids),
       },
       () => {
-        if (this.channel !== ch) return;
+        if (this.channel !== ch || this.stopped) return;
         const before = setOf('7tv');
         void this.loadChannel(ch, true).then((same) => {
           // The channel picked another 7TV set: follow that one.
-          if (same && setOf('7tv') !== before) this.watchLive(ch);
+          if (same && !this.stopped && setOf('7tv') !== before) this.watchLive(ch);
         });
       },
     );
@@ -230,6 +240,8 @@ export class App {
     for (const p of ['background-image', 'background-clip', '-webkit-background-clip', 'color', 'filter', 'background-size']) name.style.removeProperty(p);
     delete name.dataset.cyextvPaint;
     if (!paint) return;
+    // The paint owns the colour now; the readable-colours feature must not put an old one back.
+    delete name.dataset.cyextvReadable;
     name.dataset.cyextvPaint = paint.id;
     if (paint.backgroundImage) {
       name.style.backgroundImage = paint.backgroundImage;
@@ -277,18 +289,25 @@ export class App {
 
   /** Rewrites one message's emotes and adds its sender's badges; queues the sender for a personal-set lookup. */
   process(message: Element) {
-    if (this.disabledHere()) return;
+    if (this.stopped || this.disabledHere()) return;
     const sender = this.deps.site.sender(message) ?? undefined;
     const body = this.deps.site.body(message);
     // Features see each message once (a message is processed again when its sender's personal
     // emotes or looks arrive).
-    const fresh = !message.hasAttribute('data-cyextv-seen');
-    const info = { sender: sender ?? null, login: this.deps.site.login(message), text: body ? textOf(body) : '' };
+    const fresh = !this.seen.has(message);
+    if (!arrived.has(message)) arrived.set(message, this.now());
+    const info = { sender: sender ?? null, login: this.deps.site.login(message), text: body ? textOf(body) : '', at: arrived.get(message)! };
     if (fresh) {
-      message.setAttribute('data-cyextv-seen', '');
+      this.seen.add(message);
+      let changed = false;
       for (const f of this.running) {
-        if (f.prepare && guard(f, () => f.prepare!(message, info)) === false) return;
+        if (!f.prepare) continue;
+        const r = guard(f, () => f.prepare!(message, info));
+        if (r === false) return;
+        if (r === true) changed = true;
       }
+      // A feature rewrote the words: later features should judge what is shown.
+      if (changed && body) info.text = textOf(body);
     }
     if (sender) {
       this.placeBadges(message, sender);
@@ -309,6 +328,7 @@ export class App {
 
   async flushPersonal() {
     this.personalTimer = null;
+    if (this.stopped) return;
     const ch = this.channel;
     const ids = [...this.personalQueue];
     this.personalQueue.clear();
@@ -319,6 +339,7 @@ export class App {
     } catch {
       return;
     }
+    if (this.stopped) return;
     for (const id of ids) this.index.setPersonal(id, found.has(id) ? [found.get(id)!] : []);
     // Messages already shown from these chatters get their personal emotes too.
     for (const id of found.keys()) {
@@ -329,6 +350,7 @@ export class App {
 
   /** Starts watching chat: existing messages now, new ones as they arrive. */
   start() {
+    this.stopped = false;
     this.startFeatures();
     const style = this.doc.createElement('style');
     style.id = 'cyextv-styles';
@@ -344,9 +366,12 @@ export class App {
     let scheduled = false;
     const flush = () => {
       scheduled = false;
+      if (this.stopped) return;
       const batch = pending;
       pending = new Set();
-      void this.syncChannel().then(() => batch.forEach((m) => m.isConnected && this.process(m)));
+      void this.syncChannel().then(() => {
+        if (!this.stopped) batch.forEach((m) => m.isConnected && this.process(m));
+      });
     };
     this.observer = new MutationObserver((records) => {
       for (const r of records) {
@@ -372,7 +397,11 @@ export class App {
       attributes: true,
       attributeFilter: ['data-cyextv-uid', 'data-cyextv-channel', 'data-cyextv-others'],
     });
-    this.deps.site.messages(this.doc).forEach((m) => pending.add(m));
+    this.deps.site.messages(this.doc).forEach((m) => {
+      // Already on the page: no real arrival time (a restart keeps the one it has).
+      if (!arrived.has(m)) arrived.set(m, 0);
+      pending.add(m);
+    });
     scheduled = true;
     requestAnimationFrame(flush);
   }
@@ -380,13 +409,14 @@ export class App {
   private restarting = false;
   /** The channel or the other extensions changed: reload what depends on them. */
   private restart() {
-    if (this.restarting) return;
+    if (this.restarting || this.stopped) return;
     this.restarting = true;
     queueMicrotask(async () => {
+      if (this.stopped) return;
       this.channel = null;
       this.startFeatures();
       await this.loadGlobals();
-      await this.syncChannel();
+      if (!this.stopped) await this.syncChannel();
       this.restarting = false;
     });
   }
@@ -425,8 +455,18 @@ export class App {
   };
 
   stop() {
+    this.stopped = true;
+    if (this.personalTimer) clearTimeout(this.personalTimer);
+    this.personalTimer = null;
+    this.personalQueue.clear();
     for (const f of this.running) f.stop?.();
     this.running = [];
+    // Our badges and paints go too, so a new App places them again under its settings.
+    this.doc.querySelectorAll('.cyextv-badges').forEach((n) => n.remove());
+    this.doc.querySelectorAll<HTMLElement>('[data-cyextv-paint]').forEach((n) => {
+      for (const p of ['background-image', 'background-clip', '-webkit-background-clip', 'color', 'filter', 'background-size']) n.style.removeProperty(p);
+      delete n.dataset.cyextvPaint;
+    });
     this.live?.stop();
     this.observer?.disconnect();
     if (this.badgeTimer) clearInterval(this.badgeTimer);

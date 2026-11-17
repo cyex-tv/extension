@@ -13,7 +13,11 @@ const CSS = `
 .cyextv-word { background: color-mix(in srgb, var(--cyextv-hl) 38%, transparent); color: inherit; border-radius: 2px; }
 `;
 
+/** One text node that was split into plain and marked pieces: the original goes back on stop. */
+type Split = { original: Text; pieces: Node[] };
+
 export function highlights(): Feature {
+  let splits: Split[] = [];
   let ctx: FeatureContext | null = null;
   let rules: Rules | null = null;
   let chime: Chime | null = null;
@@ -51,7 +55,11 @@ export function highlights(): Feature {
       }
       if (v.wordsOnly && v.matcher) {
         const body = ctx.site.body(message);
-        if (body) markWords(body, ctx.site.skip, v.matcher);
+        if (body) {
+          splits.push(...markWords(body, ctx.site.skip, v.matcher));
+          // Drop the ones chat has scrolled away.
+          if (splits.length > 500) splits = splits.filter((x) => x.pieces[0]?.isConnected);
+        }
       }
       if (v.sound && ctx.now() - startedAt >= CHIME_WARMUP_MS) chime?.play();
     },
@@ -64,10 +72,15 @@ export function highlights(): Feature {
           delete m.dataset.cyextvLine;
           m.style.removeProperty('--cyextv-hl');
           m.querySelectorAll(':scope > .cyextv-context').forEach((r) => r.remove());
-          m.querySelectorAll('mark.cyextv-word').forEach((mark) => mark.replaceWith(doc.createTextNode(mark.textContent ?? '')));
-          m.normalize();
         });
       }
+      // The exact text nodes the page gave us go back; nothing is merged or recreated.
+      for (const { original, pieces } of splits) {
+        const first = pieces[0];
+        if (first?.parentNode) first.parentNode.insertBefore(original, first);
+        for (const n of pieces) n.parentNode?.removeChild(n);
+      }
+      splits = [];
       chime?.close();
       chime = null;
       rules = null;
@@ -77,23 +90,28 @@ export function highlights(): Feature {
 }
 
 /** Wraps each match in `<mark class="cyextv-word">`, inside plain text nodes only. */
-function markWords(body: Element, skip: string, re: RegExp) {
+function markWords(body: Element, skip: string, re: RegExp): Split[] {
   const doc = body.ownerDocument;
+  const done: Split[] = [];
   for (const node of textNodes(body, skip)) {
     const text = node.nodeValue ?? '';
     const found = ranges(re, text);
     if (!found.length) continue;
     const frag = doc.createDocumentFragment();
+    const pieces: Node[] = [];
     let at = 0;
     for (const [a, b] of found) {
-      if (a > at) frag.append(doc.createTextNode(text.slice(at, a)));
+      if (a > at) pieces.push(doc.createTextNode(text.slice(at, a)));
       const mark = doc.createElement('mark');
       mark.className = 'cyextv-word';
       mark.textContent = text.slice(a, b);
-      frag.append(mark);
+      pieces.push(mark);
       at = b;
     }
-    if (at < text.length) frag.append(doc.createTextNode(text.slice(at)));
+    if (at < text.length) pieces.push(doc.createTextNode(text.slice(at)));
+    frag.append(...pieces);
     node.replaceWith(frag);
+    done.push({ original: node, pieces });
   }
+  return done;
 }

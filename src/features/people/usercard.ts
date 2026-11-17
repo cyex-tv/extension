@@ -150,7 +150,16 @@ export function usercardMessages(): Feature {
       style.id = STYLE_ID;
       style.textContent = CSS;
       c.doc.head.append(style);
-      observer = new MutationObserver(schedule);
+      // Only a node added outside the chat list can be a card (chat itself changes constantly).
+      observer = new MutationObserver((records) => {
+        const list = c.site.chatList(c.doc);
+        for (const r of records) {
+          if (list && list.contains(r.target)) continue;
+          for (const n of r.addedNodes) {
+            if (n instanceof Element) return schedule();
+          }
+        }
+      });
       observer.observe(c.doc.body, { childList: true, subtree: true });
       schedule();
     },

@@ -99,6 +99,11 @@ export function readableColors(): Feature {
     },
     stop() {
       ctx?.doc.querySelectorAll<HTMLElement>('[data-cyextv-readable]').forEach((e) => {
+        // A paint took over the colour; leave it be.
+        if (e.dataset.cyextvPaint) {
+          delete e.dataset.cyextvReadable;
+          return;
+        }
         e.style.color = e.dataset.cyextvReadable ?? '';
         delete e.dataset.cyextvReadable;
       });
