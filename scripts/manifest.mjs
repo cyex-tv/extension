@@ -21,6 +21,7 @@ export function manifest(target, version) {
       { matches: SITES, js: ['content.js'], run_at: 'document_idle' },
     ],
     action: { default_title: 'cyex.tv', default_popup: 'popup.html', default_icon: { 16: 'icons/16.png', 32: 'icons/32.png', 48: 'icons/48.png' } },
+    commands: { 'selector-check': { suggested_key: { default: 'Alt+Shift+H' }, description: 'Check which parts of the page the extension can find' } },
     options_ui: { page: 'options.html', open_in_tab: true },
     icons: { 16: 'icons/16.png', 32: 'icons/32.png', 48: 'icons/48.png', 128: 'icons/128.png' },
   };

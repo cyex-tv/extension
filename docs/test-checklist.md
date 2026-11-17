@@ -39,6 +39,14 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 - [ ] "Animations off" shows still pictures; "on hover" animates only the emote under the pointer.
 - [ ] Switching the extension off for a channel leaves that chat untouched.
 
+## Selector check
+
+- [ ] Popup → "Check this page's selectors" (on a channel and on a Twitch or Kick page that isn't one, like the directory) opens the panel at the top right and closes the popup; Alt+Shift+H opens and closes it as well (if the key is taken, set it under the browser's extension shortcuts).
+- [ ] Every chat hook shows "found" with a count in a live chat (messages, text, name, timestamp slot, badge slot on Twitch, message box signed in, button slot); deleted notice, claim button and user card show "not found" until one appears (time out a test message, wait for a bonus, open a card, then Refresh).
+- [ ] Each "Hide" part visible on the page shows "found" with a count and which selector matched; parts not on the page say "not found on this page". Walk the live page (hype train, prediction, gift banner, pinned message, whispers) and note any key whose part is visible but reads "not found": that selector needs a fix in src/sites.
+- [ ] "Not found" filter, Refresh (after the page changed), Esc and the close button work; focus returns to where it was. Light and dark theme follow the Theme setting. At 375 px wide the panel fits without sideways scrolling.
+- [ ] "Copy report" puts JSON on the clipboard (paste it somewhere): version, site, page kind, day, hooks and hide parts with counts; no chatter names, messages or channel names.
+
 ## Welcome page
 
 - [ ] A fresh install (load unpacked into a new profile) opens "Welcome - cyex.tv" in a new tab once; reloading the extension or updating it doesn't open it again.

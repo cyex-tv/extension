@@ -26,6 +26,7 @@ interface ExtApi {
       ): void;
     };
     getURL(path: string): string;
+    getManifest(): { version: string };
     openOptionsPage(): Promise<void>;
     onInstalled: { addListener(cb: (details: { reason: string; previousVersion?: string }) => void): void };
   };
@@ -34,7 +35,10 @@ interface ExtApi {
     query(info: { active: boolean; currentWindow: boolean }): Promise<{ id?: number; url?: string }[]>;
     /** Needs no permission for the extension's own pages. */
     create(props: { url: string }): Promise<unknown>;
+    /** To the content scripts in a tab; needs no permission. */
+    sendMessage(tabId: number, message: unknown): Promise<unknown>;
   };
+  commands: { onCommand: { addListener(cb: (command: string) => void): void } };
   storage: {
     sync: ExtStorageArea;
     local: ExtStorageArea;

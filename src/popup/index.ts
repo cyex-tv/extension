@@ -1,16 +1,19 @@
 // The popup: every setting, saved as soon as it changes (the content scripts pick it up).
 import { ext } from '../ext';
+import { HEALTH_MESSAGE } from '../health/check';
 import { INBOX_KEY, type Mention, readInbox } from '../features/highlights/inbox';
 import type { ProviderId } from '../providers/types';
 import { type Animations, type Settings, load, save } from '../settings';
 import { ICON, el, icon, toggle } from '../ui/dom';
 import { useTheme } from '../ui/theme';
-import { COSMETIC_LABEL, PROVIDER_LABEL, channelKey, channelUrl, mentionTime, move, setAnimations, setChannel, setCosmetics, setEmotes } from './model';
+import { COSMETIC_LABEL, PROVIDER_LABEL, channelKey, channelUrl, mentionTime, onSupportedSite, move, setAnimations, setChannel, setCosmetics, setEmotes } from './model';
 
 const $ = <T extends Element>(sel: string) => document.querySelector<T>(sel)!;
 
 let settings: Settings;
 let here: string | null = null;
+let tabId: number | undefined;
+let onSite = false;
 let mentions: Mention[] = [];
 /** How many mentions the popup lists; the rest stay stored. */
 const SHOWN_MENTIONS = 5;
@@ -75,6 +78,14 @@ function render() {
   const all = el('button', { type: 'button', className: 'wide' }, 'All settings');
   all.addEventListener('click', () => void ext().runtime.openOptionsPage());
   more.append(all);
+  if (onSite && tabId !== undefined) {
+    const check = el('button', { type: 'button', className: 'wide' }, 'Check this page’s selectors');
+    check.addEventListener('click', () => {
+      void ext().tabs.sendMessage(tabId!, { type: HEALTH_MESSAGE }).catch(() => {});
+      window.close();
+    });
+    more.append(check);
+  }
 }
 
 async function main() {
@@ -83,6 +94,8 @@ async function main() {
   try {
     const [tab] = await ext().tabs.query({ active: true, currentWindow: true });
     here = channelKey(tab?.url);
+    tabId = tab?.id;
+    onSite = onSupportedSite(tab?.url);
   } catch {
     here = null;
   }
