@@ -30,7 +30,6 @@ The popup's "Check this page's selectors" (on any Twitch or Kick page) and the k
 | Stacked accents ("zalgo") cut to three marks per letter | - | yes | yes | S | S | built (more features), on |
 | Chat search, rate meter, screen reader announcements | D | partly | partly | M | S | later: the sites' lists are virtualised, so a search only sees what's drawn |
 | Pause chat on hover or while holding a key | 7 F B D | no | no | L | M | later: Twitch has it natively (Chat settings → Pause chat), and stopping the sites' own auto-scroll needs their React internals |
-| Count repeats / mark near-duplicates | 7 D | yes | yes | M | S | later: needs a per-chat history model; low value next to ignores |
 | Smooth new messages, hold chat back to match stream delay | D | no | no | L | S | later: the sites own the list rendering |
 | Recent history when opening a chat | 7 F B D | partly | no | L | M | later: needs a history service and a host permission; Twitch shows some itself |
 | Show joins and parts | D | no | no | L | S | later: needs an IRC connection of our own |
@@ -91,7 +90,7 @@ The popup's "Check this page's selectors" (on any Twitch or Kick page) and the k
 | Emote size | D | yes | yes | S | S | built (more features), 50 to 300 % of 28 px |
 | Link preview cards (Twitch's clip and video cards) hidden | 7 | yes | - | S | S | built (more features), in Hide on Twitch |
 | Emote usage stats page | 7 D | yes | yes | S | S | later: the emote menu's "most used" row already shows them |
-| Repeat counting and near-duplicate dimming | 7 D | yes | yes | M | S | later: needs a per-chat history model (one implementation for both) |
+| Repeat counting and near-duplicate handling | 7 D | yes | yes | M | S | built (repeats): chat looks, setting "Repeated messages": off (default), count or count and dim. The same message from different chatters within 20 seconds (a repeat keeps the group alive) folds into the first with a "×N" counter; "count" hides the repeats, "count and dim" keeps them faded. Same after lower-casing, collapsing spaces, dropping invisible characters, stacked accents and punctuation around words (NFKC, so full-width letters match); a message of only emotes (or one word said several times) counts by which words it uses, not how many. Never folded: your own messages (and your other names), highlighted messages (mentions, people, words, first messages), deleted ones, the backlog at load, one chatter repeating themselves. When the first message is deleted its repeats show again; a repeat that comes after the first was deleted starts a new group. Only CSS, attributes and our own counter node: the site's nodes stay |
 | Keyboard shortcuts (emote menu) | F D | yes | yes | S | S | built (usercard group) |
 | Link previews | 7 F D | no | no | L | M | later: fetching any site needs a broad host permission |
 | Theatre mode tweaks, player tweaks | F B | partly | no | L | S | later: out of chat scope |

@@ -9,6 +9,7 @@ import { emoteClick } from './composer/emote-click';
 import { highlights, ignores } from './highlights';
 import { cleanMessages } from './looks/clean';
 import { LOOKS } from './looks/index';
+import { repeats } from './looks/repeats';
 import { nicknames } from './people/notes';
 import { usercardNotes } from './people/notes-card';
 import { shortcuts } from './people/shortcuts';
@@ -21,6 +22,7 @@ export const FEATURES: FeatureFactory[] = [
   cleanMessages,
   ignores,
   highlights,
+  repeats,
   ...LOOKS,
   hideClutter,
   autoClaim,
