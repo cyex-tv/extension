@@ -67,6 +67,18 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 
 ## Writing
 
+- [ ] Twitch and Kick: type `kap` and press Tab; the best emote fills in with a space. Tab again cycles, Shift+Tab goes back, any other key ends it.
+- [ ] A word typed exactly as an emote stays itself on the first Tab, then cycles.
+- [ ] `@` then Tab completes only chatters seen in chat and keeps the `@`. With "comma after a name" on, a chatter as the first word becomes `@name, `.
+- [ ] With nothing to complete (or an empty word), Tab does what the site does.
+- [ ] Accents are ignored: `cafe` finds `café`. `ph` finds `peepoHappy`.
+- [ ] The emote button sits by the message box (tooltip "Emotes (Alt+E)"), survives chat re-renders and channel switches, and the panel fits small windows.
+- [ ] Menu: tabs Favorites, then 7TV, BetterTTV, FrankerFaceZ (and cyex.tv) that have emotes; the last tab is remembered after a reload.
+- [ ] Search finds by letters in order; Enter inserts the first match; Esc closes; arrows move in the grid; Enter inserts the focused emote.
+- [ ] Clicking an emote adds `name ` at the caret (space before it when needed); right-click toggles a favourite (star mark); most used appears under Favorites.
+- [ ] With animations off the menu shows still pictures. Outside click and a channel change close the panel.
+- [ ] Settings page: switching Tab completion or the emote menu off removes the Tab handling or the button at once.
+
 ## Usercard and shortcuts
 
 - [ ] Twitch: click a chatter's name; their card gets a "Messages" section at the bottom with a count and their latest 10 messages since you opened the chat, newest first, `HH:mm` before each. Readable on dark and light themes.

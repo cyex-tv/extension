@@ -3,6 +3,7 @@
 import { autoClaim } from './cleanup/auto-claim';
 import { hideClutter } from './cleanup/hide-clutter';
 import { richTooltips } from './cleanup/rich-tooltips';
+import { emoteMenu, tabComplete } from './composer';
 import { highlights, ignores } from './highlights';
 import { LOOKS } from './looks/index';
 import { shortcuts } from './people/shortcuts';
@@ -11,4 +12,4 @@ import type { Feature } from './types';
 
 export type FeatureFactory = () => Feature;
 
-export const FEATURES: FeatureFactory[] = [ignores, highlights, ...LOOKS, hideClutter, autoClaim, richTooltips, usercardMessages, shortcuts];
+export const FEATURES: FeatureFactory[] = [ignores, highlights, ...LOOKS, hideClutter, autoClaim, richTooltips, usercardMessages, shortcuts, tabComplete, emoteMenu];
