@@ -43,7 +43,7 @@ export function deleted(): Feature {
     if (list === watched) return;
     observer?.disconnect();
     watched = list;
-    if (list) observer?.observe(list, { childList: true, subtree: true, characterData: true, attributes: true });
+    if (list) observer?.observe(list, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
   };
 
   return {
