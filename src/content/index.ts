@@ -3,6 +3,7 @@
 import type { Answer, Request } from '../background/fetcher';
 import { ext } from '../ext';
 import type { FetchJson } from '../providers/types';
+import { NOTES_KEY, notes } from '../features/people/notes';
 import { STORAGE_KEY, load } from '../settings';
 import { kick } from '../sites/kick';
 import { twitch } from '../sites/twitch';
@@ -35,6 +36,10 @@ async function start() {
 
 ext().storage.onChanged.addListener((changes, area) => {
   if (area === 'sync' && STORAGE_KEY in changes) void start();
+  // Nicknames and notes changed in another tab or on the settings page: redraw, no restart.
+  if (area === 'local' && NOTES_KEY in changes) notes.replace(changes[NOTES_KEY]?.newValue);
 });
+
+void notes.load(ext().storage.local);
 
 start().catch((e) => console.warn('[cyex.tv]', e));

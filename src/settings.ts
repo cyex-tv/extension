@@ -9,6 +9,9 @@ import type { ProviderId } from './providers/types';
 export type Animations = 'on' | 'off' | 'hover';
 export type DeletedStyle = 'site' | 'strike' | 'faded' | 'hidden';
 export type Clock = '24h' | '12h';
+export type ChatFont = 'site' | 'system' | 'serif' | 'mono';
+export type EmoteClick = 'off' | 'insert' | 'copy';
+export type Sound = 'chime' | 'ping' | 'pop';
 
 /** A word rule (cyex deck's Highlights → Words). */
 export type HighlightRule = {
@@ -48,6 +51,17 @@ export type ChatSettings = {
   separators: boolean;
   /** Chat text size in px; 0 keeps the site's. */
   fontSize: number;
+  font: ChatFont;
+  /** Line height in percent; 0 keeps the site's. */
+  lineHeight: number;
+  compact: boolean;
+  /** Emote size in percent of the sites' 28 px; 0 keeps it. */
+  emoteScale: number;
+  emoteClick: EmoteClick;
+  /** Strip invisible characters (zero-width spaces, 7TV's duplicate bypass) from messages. */
+  cleanInvisible: boolean;
+  /** Cut stacks of combining marks ("zalgo") down to three. */
+  cleanZalgo: boolean;
   lastRead: boolean;
   // Timestamps
   timestamps: boolean;
@@ -56,6 +70,11 @@ export type ChatSettings = {
   // Highlights
   mentions: boolean;
   mentionSound: boolean;
+  sound: Sound;
+  /** 0 to 100. */
+  volume: number;
+  /** Keep the latest mentions on this device, for the popup's list. */
+  mentionsInbox: boolean;
   firstMessages: boolean;
   ownMessages: boolean;
   /** Other names that count as yours (nicknames, a second account). */
@@ -78,6 +97,11 @@ export type ChatSettings = {
   autoClaim: boolean;
   // Emotes
   richTooltips: boolean;
+  // People
+  /** Show your local nicknames instead of display names. */
+  nicknames: boolean;
+  /** Nickname and note fields on the site's user card. */
+  usercardNotes: boolean;
   // Keyboard
   shortcuts: boolean;
 };
@@ -110,12 +134,22 @@ export const CHAT_DEFAULTS: ChatSettings = {
   alternate: false,
   separators: false,
   fontSize: 0,
+  font: 'site',
+  lineHeight: 0,
+  compact: false,
+  emoteScale: 0,
+  emoteClick: 'insert',
+  cleanInvisible: true,
+  cleanZalgo: true,
   lastRead: true,
   timestamps: false,
   seconds: false,
   clock: '24h',
   mentions: true,
   mentionSound: false,
+  sound: 'chime',
+  volume: 60,
+  mentionsInbox: true,
   firstMessages: true,
   ownMessages: false,
   myNames: [],
@@ -132,6 +166,8 @@ export const CHAT_DEFAULTS: ChatSettings = {
   hideKick: offAll(KICK_HIDE_KEYS),
   autoClaim: false,
   richTooltips: true,
+  nicknames: true,
+  usercardNotes: true,
   shortcuts: true,
 };
 
@@ -207,18 +243,33 @@ export function mergeChat(stored: unknown): ChatSettings {
     return Object.fromEntries(keys.map((k) => [k, bool(o[k], base[k])])) as Record<K, boolean>;
   };
   const size = typeof c.fontSize === 'number' && Number.isFinite(c.fontSize) ? Math.round(c.fontSize) : 0;
+  /** A whole number in [min, max], or `zero` (meaning "like the site") for 0 and junk. */
+  const range = (v: unknown, min: number, max: number, zero: number) => {
+    if (typeof v !== 'number' || !Number.isFinite(v) || Math.round(v) === 0) return zero;
+    return Math.min(max, Math.max(min, Math.round(v)));
+  };
   return {
     deleted: oneOf(c.deleted, ['site', 'strike', 'faded', 'hidden'] as const, d.deleted),
     readableColors: b('readableColors'),
     alternate: b('alternate'),
     separators: b('separators'),
     fontSize: size === 0 ? 0 : Math.min(32, Math.max(9, size)),
+    font: oneOf(c.font, ['site', 'system', 'serif', 'mono'] as const, d.font),
+    lineHeight: range(c.lineHeight, 100, 200, 0),
+    compact: b('compact'),
+    emoteScale: range(c.emoteScale, 50, 300, 0),
+    emoteClick: oneOf(c.emoteClick, ['off', 'insert', 'copy'] as const, d.emoteClick),
+    cleanInvisible: b('cleanInvisible'),
+    cleanZalgo: b('cleanZalgo'),
     lastRead: b('lastRead'),
     timestamps: b('timestamps'),
     seconds: b('seconds'),
     clock: oneOf(c.clock, ['24h', '12h'] as const, d.clock),
     mentions: b('mentions'),
     mentionSound: b('mentionSound'),
+    sound: oneOf(c.sound, ['chime', 'ping', 'pop'] as const, d.sound),
+    volume: typeof c.volume === 'number' && Number.isFinite(c.volume) ? Math.min(100, Math.max(0, Math.round(c.volume))) : d.volume,
+    mentionsInbox: b('mentionsInbox'),
     firstMessages: b('firstMessages'),
     ownMessages: b('ownMessages'),
     myNames: names(c.myNames, 10),
@@ -235,6 +286,8 @@ export function mergeChat(stored: unknown): ChatSettings {
     hideKick: flags(KICK_HIDE_KEYS, c.hideKick, d.hideKick),
     autoClaim: b('autoClaim'),
     richTooltips: b('richTooltips'),
+    nicknames: b('nicknames'),
+    usercardNotes: b('usercardNotes'),
     shortcuts: b('shortcuts'),
   };
 }

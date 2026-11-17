@@ -4,6 +4,7 @@
 import { textNodes } from '../../chat/render';
 import type { Feature, FeatureContext } from '../types';
 import { CHIME_WARMUP_MS, Chime } from './chime';
+import { Inbox } from './inbox';
 import { type Rules, compileRules, ranges } from './match';
 
 const STYLE_ID = 'cyextv-highlights';
@@ -22,6 +23,7 @@ export function highlights(): Feature {
   let rules: Rules | null = null;
   let chime: Chime | null = null;
   let startedAt = 0;
+  let inbox: Inbox | null = null;
 
   return {
     id: 'highlights',
@@ -33,7 +35,8 @@ export function highlights(): Feature {
       ctx = c;
       rules = compileRules(c.settings.chat, c.site.self(c.doc));
       startedAt = c.now();
-      chime = new Chime(c.doc, c.now);
+      inbox = c.settings.chat.mentionsInbox && c.local ? new Inbox(c.local) : null;
+      chime = new Chime(c.doc, c.now, c.settings.chat.sound, c.settings.chat.volume);
       const style = c.doc.createElement('style');
       style.id = STYLE_ID;
       style.textContent = CSS;
@@ -62,6 +65,11 @@ export function highlights(): Feature {
         }
       }
       if (v.sound && ctx.now() - startedAt >= CHIME_WARMUP_MS) chime?.play();
+      // Only live mentions, not the backlog already on the page at load.
+      const channel = ctx.channel();
+      if (v.kind === 'mention' && inbox && info.at > 0 && info.login && channel) {
+        inbox.add({ platform: channel.platform, channel: channel.login, login: info.login, text: info.text, at: info.at });
+      }
     },
     stop() {
       const doc = ctx?.doc;
@@ -83,6 +91,8 @@ export function highlights(): Feature {
       splits = [];
       chime?.close();
       chime = null;
+      inbox?.close();
+      inbox = null;
       rules = null;
       ctx = null;
     },

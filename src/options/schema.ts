@@ -14,7 +14,9 @@ export type Item =
   | { kind: 'rules'; key: string; label: string; hint?: string; fields: RuleField[]; blank: HighlightRule | PersonRule | IgnoreRule }
   /** Drawn by the page itself: the provider order and switches. */
   | { kind: 'providers' }
-  | { kind: 'cosmetics' };
+  | { kind: 'cosmetics' }
+  /** Drawn by the page: nicknames and notes, from the device's storage. */
+  | { kind: 'notes' };
 
 export type Section = { title: string; hint?: string; items: Item[] };
 export type Page = { id: string; title: string; hint: string; sections: Section[] };
@@ -55,7 +57,28 @@ export const PAGES: Page[] = [
           { kind: 'toggle', key: 'chat.alternate', label: 'Alternate line backgrounds' },
           { kind: 'toggle', key: 'chat.separators', label: 'Lines between messages' },
           { kind: 'number', key: 'chat.fontSize', label: 'Text size', hint: 'Chat text only.', min: 9, max: 32, unit: 'px', zero: 'Like the site' },
+          {
+            kind: 'choice',
+            key: 'chat.font',
+            label: 'Font',
+            hint: 'Chat text only.',
+            options: [
+              ['site', 'Like the site'],
+              ['system', 'System'],
+              ['serif', 'Serif'],
+              ['mono', 'Mono'],
+            ],
+          },
+          { kind: 'number', key: 'chat.lineHeight', label: 'Line height', hint: 'Space between lines of a message.', min: 100, max: 200, unit: '%', zero: 'Like the site' },
+          { kind: 'toggle', key: 'chat.compact', label: 'Compact lines', hint: 'Less space above and below each message.' },
           { kind: 'toggle', key: 'chat.lastRead', label: 'Last-read line', hint: 'Marks where you were when you switched away.' },
+        ],
+      },
+      {
+        title: 'Clean text',
+        items: [
+          { kind: 'toggle', key: 'chat.cleanInvisible', label: 'Remove invisible characters', hint: 'Zero-width spaces and the like, so emotes at the end of a message still show.' },
+          { kind: 'toggle', key: 'chat.cleanZalgo', label: 'Tame stacked accents', hint: 'Cuts “zalgo” text that spills over other lines down to three marks per letter.' },
         ],
       },
       {
@@ -109,6 +132,18 @@ export const PAGES: Page[] = [
           },
           { kind: 'toggle', key: 'tooltips', label: 'Tooltips', hint: 'Name, provider and author on hover.' },
           { kind: 'toggle', key: 'chat.richTooltips', label: 'Large previews', hint: 'The tooltip shows the emote big, with its name and provider.' },
+          { kind: 'number', key: 'chat.emoteScale', label: 'Emote size', hint: 'cyex.tv, 7TV, BTTV and FFZ emotes in chat.', min: 50, max: 300, unit: '%', zero: 'Like the site' },
+          {
+            kind: 'choice',
+            key: 'chat.emoteClick',
+            label: 'Clicking an emote',
+            hint: 'In chat, on cyex.tv, 7TV, BTTV and FFZ emotes.',
+            options: [
+              ['insert', 'Adds it to your message'],
+              ['copy', 'Copies its name'],
+              ['off', 'Nothing'],
+            ],
+          },
         ],
       },
       { title: 'Which wins', hint: 'First wins when two have an emote with the same name.', items: [{ kind: 'providers' }] },
@@ -136,9 +171,27 @@ export const PAGES: Page[] = [
         items: [
           { kind: 'toggle', key: 'chat.mentions', label: 'Your name', hint: 'Messages that mention you.' },
           { kind: 'toggle', key: 'chat.mentionSound', label: 'Sound for your name', hint: 'Plays a short chime.' },
+          { kind: 'toggle', key: 'chat.mentionsInbox', label: 'Keep a list of mentions', hint: 'The latest 50 show in the toolbar popup. Kept on this device only.' },
           { kind: 'toggle', key: 'chat.firstMessages', label: 'First messages', hint: 'Someone’s first message in the channel.' },
           { kind: 'toggle', key: 'chat.ownMessages', label: 'Your own messages' },
           { kind: 'names', key: 'chat.myNames', label: 'Your other names', hint: 'Also count as you: a nickname, a second account. On Kick, add your name here.', placeholder: 'Name' },
+        ],
+      },
+      {
+        title: 'Sound',
+        hint: 'For your name and for rules with Sound on.',
+        items: [
+          {
+            kind: 'choice',
+            key: 'chat.sound',
+            label: 'Sound',
+            options: [
+              ['chime', 'Chime'],
+              ['ping', 'Ping'],
+              ['pop', 'Pop'],
+            ],
+          },
+          { kind: 'number', key: 'chat.volume', label: 'Volume', min: 0, max: 100, unit: '%' },
         ],
       },
       {
@@ -216,7 +269,17 @@ export const PAGES: Page[] = [
     id: 'usercard',
     title: 'Usercard',
     hint: 'What the site’s user card shows besides its own.',
-    sections: [{ title: 'Usercard', items: [{ kind: 'toggle', key: 'chat.usercardMessages', label: 'Messages', hint: 'Their latest messages in this chat since you opened it.' }] }],
+    sections: [
+      {
+        title: 'Usercard',
+        items: [
+          { kind: 'toggle', key: 'chat.usercardMessages', label: 'Messages', hint: 'Their latest messages in this chat since you opened it.' },
+          { kind: 'toggle', key: 'chat.usercardNotes', label: 'Nickname and note', hint: 'Fields on the card to name someone your way and keep a note.' },
+          { kind: 'toggle', key: 'chat.nicknames', label: 'Show nicknames in chat', hint: 'Instead of their display name. Hover the name for the real one and your note.' },
+        ],
+      },
+      { title: 'Nicknames and notes', hint: 'Kept on this device only; Twitch and Kick never see them.', items: [{ kind: 'notes' }] },
+    ],
   },
   {
     id: 'twitch',

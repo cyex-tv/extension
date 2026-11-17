@@ -1,14 +1,18 @@
 // The popup: every setting, saved as soon as it changes (the content scripts pick it up).
 import { ext } from '../ext';
+import { INBOX_KEY, type Mention, readInbox } from '../features/highlights/inbox';
 import type { ProviderId } from '../providers/types';
 import { type Animations, type Settings, load, save } from '../settings';
 import { ICON, el, icon, toggle } from '../ui/dom';
-import { COSMETIC_LABEL, PROVIDER_LABEL, channelKey, move, setAnimations, setChannel, setCosmetics, setEmotes } from './model';
+import { COSMETIC_LABEL, PROVIDER_LABEL, channelKey, channelUrl, mentionTime, move, setAnimations, setChannel, setCosmetics, setEmotes } from './model';
 
 const $ = <T extends Element>(sel: string) => document.querySelector<T>(sel)!;
 
 let settings: Settings;
 let here: string | null = null;
+let mentions: Mention[] = [];
+/** How many mentions the popup lists; the rest stay stored. */
+const SHOWN_MENTIONS = 5;
 
 async function update(next: Settings) {
   settings = next;
@@ -52,6 +56,16 @@ function render() {
     b.setAttribute('aria-pressed', String(b.value === settings.animations));
   });
 
+  const box = $('#mentions');
+  $<HTMLElement>('#mentions-section').hidden = !settings.chat.mentionsInbox || mentions.length === 0;
+  box.replaceChildren(
+    ...mentions.slice(0, SHOWN_MENTIONS).map((m) => {
+      const a = el('a', { className: 'mention', href: channelUrl(m.platform, m.channel), target: '_blank', rel: 'noreferrer' });
+      a.append(el('span', { className: 'meta' }, el('b', {}, m.login), `in ${m.channel}`, mentionTime(m.at, Date.now())), el('span', { className: 'body' }, m.text));
+      return a;
+    }),
+  );
+
   const more = $('#more');
   more.replaceChildren(
     toggle('Tooltips', settings.tooltips, (on) => update({ ...settings, tooltips: on }), 'Name, provider and author on hover.'),
@@ -70,6 +84,16 @@ async function main() {
   } catch {
     here = null;
   }
+  try {
+    mentions = readInbox((await ext().storage.local.get(INBOX_KEY))[INBOX_KEY]);
+  } catch {
+    mentions = [];
+  }
+  $('#mentions-clear').addEventListener('click', () => {
+    mentions = [];
+    render();
+    void ext().storage.local.set({ [INBOX_KEY]: [] });
+  });
   document.querySelectorAll<HTMLButtonElement>('#animations button').forEach((b) => {
     b.addEventListener('click', () => update(setAnimations(settings, b.value as Animations)));
   });

@@ -41,6 +41,7 @@ export const TWITCH_HIDE_SELECTORS: Record<TwitchHide, HideSelectors> = {
   userNotices: ['[data-test-selector="user-notice-line"]', '.user-notice-line'],
   cheers: ['[data-a-target="chat-line-message"] [class*="cheermote"]', '[data-a-target="chat-line-message"] img[alt^="cheer" i]'],
   replyButton: ['[data-test-selector="chat-reply-button"]', 'button[aria-label^="Click to reply" i]'],
+  linkCards: ['[data-test-selector="chat-card"]', '[data-a-target="chat-card"]', '.chat-card'],
   firstChatter: ['[data-test-selector*="first-time-chatter"]', '[class*="first-time-chatter"]'],
   bits: ['[data-a-target="bits-button"]', '[data-test-selector="bits-button"]', 'button[aria-label="Bits"]'],
   hypeChatButton: ['button[aria-label="Hype Chat"]', '[data-a-target="hype-chat-button"]'],
