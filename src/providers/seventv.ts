@@ -73,9 +73,11 @@ export const seventv: EmoteProvider = {
   async global(fetch: FetchJson) {
     return set(await fetch(`${API}/emote-sets/global`), 'global');
   },
-  async channel(fetch: FetchJson, platform: Platform, channelId: string) {
-    const user = await fetch(`${API}/users/${platform}/${encodeURIComponent(channelId)}`);
+  async channel(fetch: FetchJson, platform: Platform, channelId: string, fresh = false) {
+    const user = await fetch(`${API}/users/${platform}/${encodeURIComponent(channelId)}`, { fresh });
     if (!isObject(user) || !isObject(user.emote_set)) return { provider: '7tv', scope: 'channel', emotes: [] };
-    return set(user.emote_set, 'channel');
+    const out = set(user.emote_set, 'channel');
+    const id = str(user.emote_set.id);
+    return id ? { ...out, setId: id } : out;
   },
 };

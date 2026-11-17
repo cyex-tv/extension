@@ -98,7 +98,7 @@ describe('placing badges in chat', () => {
       'https://api.frankerfacez.com/v1/badges/ids': { badges: [], users: {} },
     });
     document.body.innerHTML = `<div data-a-target="chat-line-message" data-cyextv-uid="111"><span></span><span class="chat-line__username">lumen_fox</span><span data-a-target="chat-line-message-body"><span class="text-fragment">hi</span></span></div>`;
-    const app = new App({ site: twitch, fetch, settings: { ...DEFAULTS, cosmetics: { ...DEFAULTS.cosmetics, bttv: false } } });
+    const app = new App({ site: twitch, fetch, settings: { ...DEFAULTS, cosmetics: { ...DEFAULTS.cosmetics, bttv: false } }, sockets: null });
     await app.loadBadges();
     const line = document.querySelector('[data-a-target="chat-line-message"]')!;
     app.process(line);

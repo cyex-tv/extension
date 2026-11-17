@@ -26,18 +26,24 @@ export type Emote = {
   modifierFlags?: number;
 };
 
-export type EmoteSet = { provider: ProviderId; scope: Scope; emotes: Emote[] };
+export type EmoteSet = {
+  provider: ProviderId;
+  scope: Scope;
+  emotes: Emote[];
+  /** The provider's ID for this set, for its live updates (7TV's emote set, cyex.tv's set). */
+  setId?: string;
+};
 
 /** Fetches JSON from an allowed API host. Not found is `null`; anything else throws. */
-export type FetchJson = (url: string, init?: { method?: 'GET' | 'POST'; body?: unknown }) => Promise<unknown | null>;
+export type FetchJson = (url: string, init?: { method?: 'GET' | 'POST'; body?: unknown; fresh?: boolean }) => Promise<unknown | null>;
 
 export interface EmoteProvider {
   readonly id: ProviderId;
   /** Which platforms it has emotes for. */
   readonly platforms: readonly Platform[];
   global(fetch: FetchJson): Promise<EmoteSet>;
-  /** The channel's emotes; an empty set when the channel has none there. */
-  channel(fetch: FetchJson, platform: Platform, channelId: string): Promise<EmoteSet>;
+  /** The channel's emotes; an empty set when the channel has none there. `fresh` skips the cache. */
+  channel(fetch: FetchJson, platform: Platform, channelId: string, fresh?: boolean): Promise<EmoteSet>;
 }
 
 /** Thrown when an answer doesn't have the shape the provider documents. */

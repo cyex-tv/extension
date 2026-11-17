@@ -4,6 +4,8 @@
 // allows them. Providers whose own extension is installed are left to it unless the user says
 // otherwise (`settings.overrideOthers`).
 import { EmoteIndex } from '../chat/index';
+import { ChannelLive } from '../live/sources';
+import type { SocketFactory } from '../live/socket';
 import { type BadgeMap, type BadgeProvider, badgeTooltip, bttvBadges, cyexDeck, ffzBadges } from '../cosmetics/badges';
 import { EMOTE_CLASS, STYLES, renderEmotes } from '../chat/render';
 import { PROVIDERS } from '../providers';
@@ -18,7 +20,15 @@ export const BADGE_REFRESH_MS = 30 * 60_000;
 const BADGE_SOURCES: Record<BadgeProvider, (f: FetchJson) => Promise<BadgeMap>> = { cyexdeck: cyexDeck, bttv: bttvBadges, ffz: ffzBadges };
 const PERSONAL_TTL_MS = 10 * 60_000;
 
-export type AppDeps = { site: Site; fetch: FetchJson; settings: Settings; doc?: Document; now?: () => number };
+export type AppDeps = {
+  site: Site;
+  fetch: FetchJson;
+  settings: Settings;
+  doc?: Document;
+  now?: () => number;
+  /** Live updates; tests pass a fake socket, or `null` for none. */
+  sockets?: SocketFactory | null;
+};
 
 export class App {
   readonly index: EmoteIndex;
@@ -32,6 +42,7 @@ export class App {
   private observer: MutationObserver | null = null;
   private badges = new Map<BadgeProvider, BadgeMap>();
   private badgeTimer: ReturnType<typeof setInterval> | null = null;
+  private live: ChannelLive | null;
   private doc: Document;
   private now: () => number;
 
@@ -39,6 +50,7 @@ export class App {
     this.doc = deps.doc ?? document;
     this.now = deps.now ?? Date.now;
     this.index = new EmoteIndex(deps.settings.order);
+    this.live = deps.sockets === null ? null : new ChannelLive(deps.sockets);
   }
 
   get settings(): Settings {
@@ -77,14 +89,46 @@ export class App {
     const ch = await this.deps.site.channel();
     if (!ch || (this.channel && ch.id === this.channel.id && ch.platform === this.channel.platform)) return false;
     this.channel = ch;
+    if (!(await this.loadChannel(ch, false))) return false;
+    this.allowPersonal = this.enabled().includes('cyextv') ? await allowsPersonal(this.deps.fetch, ch.platform, ch.id).catch(() => false) : false;
+    this.personalSeen.clear();
+    this.watchLive(ch);
+    return true;
+  }
+
+  /** (Re)loads the current channel's sets; false when the channel changed meanwhile. */
+  private async loadChannel(ch: Channel, fresh: boolean): Promise<boolean> {
     const on = this.enabled();
-    const results = await Promise.allSettled(on.map((id) => PROVIDERS[id].channel(this.deps.fetch, ch.platform, ch.id)));
+    const results = await Promise.allSettled(on.map((id) => PROVIDERS[id].channel(this.deps.fetch, ch.platform, ch.id, fresh)));
     if (this.channel !== ch) return false;
     this.channelSets = results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
-    this.allowPersonal = on.includes('cyextv') ? await allowsPersonal(this.deps.fetch, ch.platform, ch.id).catch(() => false) : false;
-    this.personalSeen.clear();
     this.rebuild();
     return true;
+  }
+
+  /** Live updates for the channel's cyex.tv and 7TV sets: a change reloads them. */
+  private watchLive(ch: Channel) {
+    if (!this.live) return;
+    const on = this.enabled();
+    const setOf = (p: ProviderId) => this.channelSets.find((s) => s.provider === p)?.setId;
+    this.live.watch(
+      {
+        platform: ch.platform,
+        channelId: ch.id,
+        cyextvSet: setOf('cyextv'),
+        seventvSet: setOf('7tv'),
+        cyextv: on.includes('cyextv'),
+        seventv: on.includes('7tv'),
+      },
+      () => {
+        if (this.channel !== ch) return;
+        const before = setOf('7tv');
+        void this.loadChannel(ch, true).then((same) => {
+          // The channel picked another 7TV set: follow that one.
+          if (same && setOf('7tv') !== before) this.watchLive(ch);
+        });
+      },
+    );
   }
 
   /** Badge providers switched on that apply on this site. */
@@ -263,6 +307,7 @@ export class App {
   };
 
   stop() {
+    this.live?.stop();
     this.observer?.disconnect();
     if (this.badgeTimer) clearInterval(this.badgeTimer);
     this.doc.removeEventListener('mouseover', this.hover);
