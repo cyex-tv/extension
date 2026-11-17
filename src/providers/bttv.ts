@@ -1,7 +1,7 @@
 // BetterTTV's public v3 API: global emotes and a Twitch channel's own and shared emotes.
 // BTTV has no Kick emotes. A handful of old global emotes are drawn on top of the one before
 // them; BTTV marks them by name only.
-import { type Emote, type EmoteProvider, type EmoteSet, type FetchJson, type Platform, ShapeError, arr, isObject, str } from './types';
+import { type Emote, type EmoteProvider, type EmoteSet, type FetchJson, type Platform, ShapeError, arr, isObject, isPlatformId, str } from './types';
 
 export const API = 'https://api.betterttv.net/3';
 export const CDN = 'https://cdn.betterttv.net/emote';
@@ -53,7 +53,7 @@ export const bttv: EmoteProvider = {
   },
   async channel(fetch: FetchJson, platform: Platform, channelId: string, fresh = false) {
     const empty: EmoteSet = { provider: 'bttv', scope: 'channel', emotes: [] };
-    if (platform !== 'twitch') return empty;
+    if (platform !== 'twitch' || !isPlatformId(channelId)) return empty;
     const user = await fetch(`${API}/cached/users/twitch/${encodeURIComponent(channelId)}`, { fresh });
     if (!isObject(user)) return empty;
     const all = [...arr(user.channelEmotes), ...arr(user.sharedEmotes)];

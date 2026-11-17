@@ -1,7 +1,7 @@
 // FrankerFaceZ's public v1 API: the default global sets and a Twitch room's sets. FFZ has no
 // Kick emotes. Modifier emotes (flip, grow, hidden...) change the emote before them; they're
 // kept with their `modifier_flags` and marked zero-width so they never take space of their own.
-import { type Emote, type EmoteImage, type EmoteProvider, type EmoteSet, type FetchJson, type Platform, ShapeError, arr, https, isObject, num, str } from './types';
+import { type Emote, type EmoteImage, type EmoteProvider, type EmoteSet, type FetchJson, type Platform, ShapeError, arr, https, isObject, isPlatformId, num, str } from './types';
 
 export const API = 'https://api.frankerfacez.com/v1';
 
@@ -64,7 +64,7 @@ export const ffz: EmoteProvider = {
   },
   async channel(fetch: FetchJson, platform: Platform, channelId: string, fresh = false) {
     const empty: EmoteSet = { provider: 'ffz', scope: 'channel', emotes: [] };
-    if (platform !== 'twitch') return empty;
+    if (platform !== 'twitch' || !isPlatformId(channelId)) return empty;
     const raw = await fetch(`${API}/room/id/${encodeURIComponent(channelId)}`, { fresh });
     if (!isObject(raw) || !isObject(raw.sets)) return empty;
     return fromSets(raw.sets, null, 'channel');

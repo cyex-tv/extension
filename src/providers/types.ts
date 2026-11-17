@@ -34,6 +34,11 @@ export type EmoteSet = {
   setId?: string;
 };
 
+/** Twitch and Kick user and channel IDs are numeric. Anything else came from the page and never goes into a URL. */
+export function isPlatformId(s: string): boolean {
+  return /^\d{1,20}$/.test(s);
+}
+
 /** Fetches JSON from an allowed API host. Not found is `null`; anything else throws. */
 export type FetchJson = (url: string, init?: { method?: 'GET' | 'POST'; body?: unknown; fresh?: boolean }) => Promise<unknown | null>;
 
