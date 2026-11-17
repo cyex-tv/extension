@@ -85,6 +85,7 @@ export function emoteMenu(): Feature {
       button.type = 'button';
       button.title = 'Emotes (Alt+E)';
       button.setAttribute('aria-label', 'Emotes');
+      button.setAttribute('data-cyextv', '');
       button.setAttribute('aria-haspopup', 'dialog');
       button.setAttribute('aria-expanded', 'false');
       button.innerHTML = ICON;

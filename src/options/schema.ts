@@ -1,7 +1,8 @@
 // The settings page, as data: pages in a sidebar, sections on a page, items in a section. Grouped
 // and worded like cyex deck's settings, so the two read the same. The page (index.ts) draws it;
 // tests check every key points at a real setting.
-import { CLUTTER, type Clutter, type HighlightRule, type IgnoreRule, type PersonRule } from '../settings';
+import { type HideOption, KICK_HIDE, TWITCH_HIDE } from '../hide';
+import type { HighlightRule, IgnoreRule, PersonRule } from '../settings';
 
 export type RuleField = { key: string; label: string; kind: 'text' | 'bool' | 'color'; hint?: string; placeholder?: string };
 
@@ -18,16 +19,14 @@ export type Item =
 export type Section = { title: string; hint?: string; items: Item[] };
 export type Page = { id: string; title: string; hint: string; sections: Section[] };
 
-const CLUTTER_LABEL: Record<Clutter, [string, string]> = {
-  bits: ['Bits button', 'The cheer button next to the message box.'],
-  points: ['Channel points', 'The points balance under chat.'],
-  predictions: ['Predictions and polls', 'The cards over chat.'],
-  hypeChat: ['Hype Chat', 'Paid pinned messages over chat.'],
-  leaderboard: ['Leaderboard', 'Top cheerers and gifters over chat.'],
-  recommended: ['Recommended channels', 'In the side bar.'],
-  giftBanners: ['Gift banners', 'Sub gift and community gift banners.'],
-  viewerCount: ['Viewer count', 'Under the stream.'],
-};
+/** One section per group, in the catalog's order. */
+function hideSections(options: readonly HideOption[], prefix: string): Section[] {
+  const groups = [...new Set(options.map((o) => o.group))];
+  return groups.map((g) => ({
+    title: g,
+    items: options.filter((o) => o.group === g).map((o) => ({ kind: 'toggle' as const, key: `${prefix}.${o.key}`, label: o.label, hint: o.hint })),
+  }));
+}
 
 const COLOR_HINT = 'Tints the message. Empty goes back to the default.';
 
@@ -220,13 +219,19 @@ export const PAGES: Page[] = [
     sections: [{ title: 'Usercard', items: [{ kind: 'toggle', key: 'chat.usercardMessages', label: 'Messages', hint: 'Their latest messages in this chat since you opened it.' }] }],
   },
   {
-    id: 'cleanup',
-    title: 'Clean up',
-    hint: 'Hide parts of the page you don’t use. Twitch only for now.',
+    id: 'twitch',
+    title: 'Hide on Twitch',
+    hint: 'Hide parts of Twitch you don’t use. Nothing is removed: switch a part back on and it returns at once.',
     sections: [
-      { title: 'Hide', items: CLUTTER.map((c) => ({ kind: 'toggle' as const, key: `chat.hide.${c}`, label: CLUTTER_LABEL[c][0], hint: CLUTTER_LABEL[c][1] })) },
-      { title: 'Channel points', items: [{ kind: 'toggle', key: 'chat.autoClaim', label: 'Claim bonus points', hint: 'Clicks the bonus chest when it shows.' }] },
+      ...hideSections(TWITCH_HIDE, 'chat.hide'),
+      { title: 'Channel points', items: [{ kind: 'toggle', key: 'chat.autoClaim', label: 'Claim bonus points', hint: 'Clicks the bonus chest when it shows, also while the points are hidden.' }] },
     ],
+  },
+  {
+    id: 'kick',
+    title: 'Hide on Kick',
+    hint: 'Hide parts of Kick you don’t use. Nothing is removed: switch a part back on and it returns at once.',
+    sections: hideSections(KICK_HIDE, 'chat.hideKick'),
   },
   {
     id: 'channels',

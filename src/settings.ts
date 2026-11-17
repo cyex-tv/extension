@@ -2,6 +2,7 @@
 // on its own; emotes and cosmetics (badges, paints) are separate switches. The chat features
 // (`chat`) follow cyex deck's settings: same names, same defaults, except that sounds start off
 // and anything the sites already do themselves starts off too.
+import { KICK_HIDE_KEYS, type KickHide, TWITCH_HIDE_KEYS, type TwitchHide } from './hide';
 import { DEFAULT_ORDER } from './providers';
 import type { ProviderId } from './providers/types';
 
@@ -35,9 +36,9 @@ export type IgnoreRule = {
   swap: string;
 };
 
-/** Parts of the sites' pages that can be hidden (Clean up). */
-export const CLUTTER = ['bits', 'points', 'predictions', 'hypeChat', 'leaderboard', 'recommended', 'giftBanners', 'viewerCount'] as const;
-export type Clutter = (typeof CLUTTER)[number];
+/** Parts of Twitch's page that can be hidden (see src/hide.ts); Kick's are `hideKick`. */
+export const CLUTTER = TWITCH_HIDE_KEYS;
+export type Clutter = TwitchHide;
 
 export type ChatSettings = {
   // Messages
@@ -71,8 +72,9 @@ export type ChatSettings = {
   emoteMenu: boolean;
   // Usercard
   usercardMessages: boolean;
-  // Clean up
-  hide: Record<Clutter, boolean>;
+  // Hide on Twitch, Hide on Kick
+  hide: Record<TwitchHide, boolean>;
+  hideKick: Record<KickHide, boolean>;
   autoClaim: boolean;
   // Emotes
   richTooltips: boolean;
@@ -98,6 +100,10 @@ export type Settings = {
 export const MAX_RULES = 40;
 export const MAX_NAMES = 100;
 
+function offAll<K extends string>(keys: readonly K[]): Record<K, boolean> {
+  return Object.fromEntries(keys.map((k) => [k, false])) as Record<K, boolean>;
+}
+
 export const CHAT_DEFAULTS: ChatSettings = {
   deleted: 'strike',
   readableColors: true,
@@ -122,7 +128,8 @@ export const CHAT_DEFAULTS: ChatSettings = {
   mentionComma: false,
   emoteMenu: true,
   usercardMessages: true,
-  hide: Object.fromEntries(CLUTTER.map((c) => [c, false])) as Record<Clutter, boolean>,
+  hide: offAll(TWITCH_HIDE_KEYS),
+  hideKick: offAll(KICK_HIDE_KEYS),
   autoClaim: false,
   richTooltips: true,
   shortcuts: true,
@@ -195,7 +202,10 @@ export function mergeChat(stored: unknown): ChatSettings {
   const c = isObj(stored) ? stored : {};
   const d = CHAT_DEFAULTS;
   const b = (k: keyof ChatSettings) => bool(c[k], d[k] as boolean);
-  const hide = isObj(c.hide) ? c.hide : {};
+  const flags = <K extends string>(keys: readonly K[], over: unknown, base: Record<K, boolean>): Record<K, boolean> => {
+    const o = isObj(over) ? over : {};
+    return Object.fromEntries(keys.map((k) => [k, bool(o[k], base[k])])) as Record<K, boolean>;
+  };
   const size = typeof c.fontSize === 'number' && Number.isFinite(c.fontSize) ? Math.round(c.fontSize) : 0;
   return {
     deleted: oneOf(c.deleted, ['site', 'strike', 'faded', 'hidden'] as const, d.deleted),
@@ -221,7 +231,8 @@ export function mergeChat(stored: unknown): ChatSettings {
     mentionComma: b('mentionComma'),
     emoteMenu: b('emoteMenu'),
     usercardMessages: b('usercardMessages'),
-    hide: Object.fromEntries(CLUTTER.map((k) => [k, bool(hide[k], d.hide[k])])) as Record<Clutter, boolean>,
+    hide: flags(TWITCH_HIDE_KEYS, c.hide, d.hide),
+    hideKick: flags(KICK_HIDE_KEYS, c.hideKick, d.hideKick),
     autoClaim: b('autoClaim'),
     richTooltips: b('richTooltips'),
     shortcuts: b('shortcuts'),
@@ -259,8 +270,28 @@ export async function load(area: ExtStorageArea): Promise<Settings> {
   return merge((await area.get(KEY))[KEY]);
 }
 
+/**
+ * What is stored: only what differs from the defaults (synced storage allows 8 KB per item, and
+ * most of the switches stay as they are). `merge` fills the rest back in.
+ */
+export function compact(settings: Settings): Record<string, unknown> {
+  return (diff(settings, DEFAULTS) ?? {}) as Record<string, unknown>;
+}
+
+function diff(value: unknown, base: unknown): unknown {
+  if (isObj(value) && isObj(base)) {
+    const out: Obj = {};
+    for (const [k, v] of Object.entries(value)) {
+      const d = k in base ? diff(v, base[k]) : v;
+      if (d !== undefined) out[k] = d;
+    }
+    return Object.keys(out).length ? out : undefined;
+  }
+  return JSON.stringify(value) === JSON.stringify(base) ? undefined : value;
+}
+
 export async function save(area: ExtStorageArea, settings: Settings): Promise<void> {
-  await area.set({ [KEY]: settings });
+  await area.set({ [KEY]: compact(settings) });
 }
 
 export const STORAGE_KEY = KEY;

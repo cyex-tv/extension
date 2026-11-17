@@ -2,11 +2,28 @@
 // ": " separator after the username. Kick's own emotes are `[data-emote-id]` spans. The channel
 // comes from Kick's public channel endpoint (same origin): cyex.tv and 7TV key Kick channels by
 // the broadcaster's user ID.
+import type { HideSelectors, KickHide } from '../hide';
 import { type Channel, type Site, cardLogin, loginFromPath } from './index';
 
 // Every Kick selector the extension uses is in this file.
 
 const MESSAGE = '#chatroom-messages [data-index]';
+
+// What "Hide on Kick" hides. Kick has few stable hooks (Tailwind classes), so these lean on ids,
+// data-testid and aria labels, and need a live check now and then. Our own buttons carry
+// `data-cyextv`, which every rule here leaves alone.
+const OURS = ':not([data-cyextv])';
+export const KICK_HIDE_SELECTORS: Record<KickHide, HideSelectors> = {
+  sidebar: ['#sidebar-wrapper', '[data-testid="sidebar"]', 'nav[data-sidebar]'],
+  sidebarFollowing: ['[data-testid="sidebar-following"]', '#sidebar-wrapper [data-testid*="following"]', '#sidebar-wrapper [aria-label*="Following"]'],
+  sidebarRecommended: ['[data-testid="sidebar-recommended"]', '#sidebar-wrapper [data-testid*="recommended"]', '#sidebar-wrapper [aria-label*="ecommended"]'],
+  pinned: ['[data-testid="pinned-message"]', '[data-testid*="pinned-message"]', '#chatroom-top .pinned-message'],
+  predictions: ['[data-testid*="prediction"]', '[data-testid*="poll"]', '#chatroom-top [aria-label*="rediction"]'],
+  giftBanners: ['[data-testid*="gift-banner"]', '[data-testid*="sub-gift"]', '#chatroom-top [data-testid*="gift"]'],
+  leaderboard: ['[data-testid*="leaderboard"]', '#chatroom-top [aria-label*="eaderboard"]'],
+  emoteButton: [`#chat-emotes-btn${OURS}`, `[data-testid="emote-picker-button"]${OURS}`, `button[aria-label="Emotes"]${OURS}:not(.cyextv-em-btn)`],
+  kicksButton: [`[data-testid*="kicks"]${OURS}`, `button[aria-label*="Kicks"]${OURS}`],
+};
 
 let cached: { login: string; channel: Channel | null } | null = null;
 
@@ -75,7 +92,7 @@ export const kick: Site = {
   isFirst(message) {
     return message.hasAttribute('data-cyextv-first');
   },
-  clutter: {},
+  hide: KICK_HIDE_SELECTORS,
   claimButton() {
     return null;
   },
