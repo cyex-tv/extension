@@ -10,7 +10,8 @@ import { type BadgeMap, type BadgeProvider, badgeTooltip, bttvBadges, cyexDeck, 
 import { SeventvCosmetics } from '../cosmetics/seventv';
 import { CyexCosmetics, type PaintCss, USERS_MAX, loadCatalog, lookupUsers, paintCss } from '../cosmetics/cyextv';
 import { CosmeticsLive } from '../live/cosmetics';
-import { EMOTE_CLASS, STYLES, renderEmotes } from '../chat/render';
+import { isActive, placeMotion, setPaused } from '../chat/motion';
+import { EMOTE_CLASS, STYLES, type RenderOptions, renderEmotes } from '../chat/render';
 import { PROVIDERS } from '../providers';
 import { allowsPersonal, personal } from '../providers/cyextv';
 import type { EmoteSet, FetchJson, ProviderId } from '../providers/types';
@@ -105,6 +106,49 @@ export class App {
       channel: () => this.channel,
       others: () => this.others(),
       local: this.deps.local ?? null,
+    };
+  }
+
+  /** Whether the window is in use; only tracked while "animate only when focused" is on. */
+  private active = true;
+  private focusListeners: (() => void) | null = null;
+
+  /** Animated pictures are on: the setting says so, and (when asked) the window is the one in use. */
+  moving(): boolean {
+    return this.settings.animations === 'on' && (!this.settings.animateOnlyFocused || this.active);
+  }
+
+  private renderOptions(): RenderOptions {
+    const s = this.settings;
+    return { animations: s.animations, tooltips: s.tooltips, pausable: s.animateOnlyFocused, paused: !this.moving() };
+  }
+
+  /** Freezes or releases the moving pictures and the cyex.tv image paints when the window's focus changes. */
+  private watchFocus() {
+    if (this.settings.animations !== 'on' || !this.settings.animateOnlyFocused) return;
+    const view = this.doc.defaultView;
+    this.active = isActive(this.doc);
+    const change = () => {
+      const now = isActive(this.doc);
+      if (this.stopped || now === this.active) return;
+      this.active = now;
+      setPaused(this.doc, !now);
+      // Image paints of cyex.tv have a still too: draw those names again.
+      this.doc.querySelectorAll<HTMLElement>('[data-cyextv-uid]').forEach((m) => {
+        const name = this.deps.site.nameElement(m);
+        const sender = m.getAttribute('data-cyextv-uid');
+        if (!name || !sender || !name.dataset.cyextvPaint?.startsWith('cyextv:')) return;
+        this.clearPaint(name);
+        this.applyPaint(m, sender);
+      });
+    };
+    view?.addEventListener('focus', change);
+    view?.addEventListener('blur', change);
+    this.doc.addEventListener('visibilitychange', change);
+    this.focusListeners = () => {
+      view?.removeEventListener('focus', change);
+      view?.removeEventListener('blur', change);
+      this.doc.removeEventListener('visibilitychange', change);
     };
   }
 
@@ -254,7 +298,7 @@ export class App {
   /** The paint a chatter shows: cyex.tv's when they have one, else 7TV's. */
   private paintFor(sender: string): { id: string; name: string; source: string; css: PaintCss } | null {
     const cyex = this.settings.cosmetics.cyextv ? this.cyexLooks?.paintOf(sender) : undefined;
-    const css = cyex ? paintCss(cyex, { animated: this.settings.animations === 'on' }) : null;
+    const css = cyex ? paintCss(cyex, { animated: this.moving() }) : null;
     if (cyex && css) return { id: `cyextv:${cyex.id}`, name: cyex.name, source: 'cyex.tv', css };
     const paint = this.seventvCosmeticsOn() ? this.seventvLooks?.paintOf(sender) : undefined;
     if (!paint) return null;
@@ -319,9 +363,13 @@ export class App {
     wrap.className = 'cyextv-badges';
     for (const b of list) {
       const img = this.doc.createElement('img');
-      const urls = b.stills && this.settings.animations !== 'on' ? b.stills : b.urls;
+      const set = (u: readonly [string, string, string]) => `${u[0]} 1x, ${u[1]} 2x, ${u[2]} 4x`;
+      const urls = b.stills && !this.moving() ? b.stills : b.urls;
       img.src = urls[0];
-      img.srcset = `${urls[0]} 1x, ${urls[1]} 2x, ${urls[2]} 4x`;
+      img.srcset = set(urls);
+      if (b.stills && this.settings.animations === 'on' && this.settings.animateOnlyFocused) {
+        placeMotion(img, { moving: { src: b.urls[0], set: set(b.urls) }, still: { src: b.stills[0], set: set(b.stills) } }, !this.moving());
+      }
       img.alt = b.title;
       img.height = 18;
       img.decoding = 'async';
@@ -358,7 +406,7 @@ export class App {
       this.placeBadges(message, sender);
       this.applyPaint(message, sender);
     }
-    if (body) renderEmotes(body, (w) => this.index.find(w, sender), this.deps.site.skip, this.settings);
+    if (body) renderEmotes(body, (w) => this.index.find(w, sender), this.deps.site.skip, this.renderOptions());
     if (fresh) for (const f of this.running) if (f.message) guard(f, () => f.message!(message, info));
     if (sender && this.allowPersonal) this.wantPersonal(sender);
     if (sender && this.cyexLooks) this.wantLooks(sender);
@@ -475,6 +523,7 @@ export class App {
     style.textContent = STYLES;
     if (!this.doc.getElementById(style.id)) this.doc.head.append(style);
 
+    this.watchFocus();
     this.startCyexLooks();
     this.doc.addEventListener('mouseover', this.hover, { passive: true });
     this.doc.addEventListener('mouseout', this.hover, { passive: true });
@@ -595,6 +644,10 @@ export class App {
     this.live?.stop();
     this.observer?.disconnect();
     if (this.badgeTimer) clearInterval(this.badgeTimer);
+    // Nothing is left frozen by a stopped App.
+    this.focusListeners?.();
+    this.focusListeners = null;
+    if (this.settings.animations === 'on' && this.settings.animateOnlyFocused) setPaused(this.doc, false);
     this.doc.removeEventListener('mouseover', this.hover);
     this.doc.removeEventListener('mouseout', this.hover);
     this.doc.removeEventListener('copy', this.copy);

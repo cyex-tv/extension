@@ -87,6 +87,7 @@ The popup's "Check this page's selectors" (on any Twitch or Kick page) and the k
 | Claim bonus channel points | 7 F B | yes | no | S | M | built (clean up), off by default |
 | Large emote previews in the tooltip | 7 F B D | yes | yes | S | M | built (clean up group) |
 | Clicking an emote adds it to your message, or copies its name | 7 F B | yes | yes | S | M | built (more features): adds it by default; Ctrl/Cmd/Alt clicks stay the browser's |
+| Animate only when the window is focused | - | yes | yes | S | M | built (focus animation), setting "Animate only when focused" under Emotes and badges, off by default, only with Animations on: when the window loses focus or its tab is hidden, animated emotes and badges swap to their first frame and cyex.tv image paints to their still, and back when it returns (a swap of `src`, nothing redrawn; emotes drawn while away start frozen). 7TV's paints have no still, so they keep moving, as under "Animations off" |
 | Emote size | D | yes | yes | S | S | built (more features), 50 to 300 % of 28 px |
 | Link preview cards (Twitch's clip and video cards) hidden | 7 | yes | - | S | S | built (more features), in Hide on Twitch |
 | Emote usage stats page | 7 D | yes | yes | S | S | later: the emote menu's "most used" row already shows them |

@@ -182,6 +182,7 @@ export const PAGES: Page[] = [
               ['off', 'Off'],
             ],
           },
+          { kind: 'toggle', key: 'animateOnlyFocused', label: 'Animate only when focused', hint: 'With Animations on: emotes, badges and cyex.tv paints hold still while this window is in the background.' },
           { kind: 'toggle', key: 'tooltips', label: 'Tooltips', hint: 'Name, provider and author on hover.' },
           { kind: 'toggle', key: 'chat.richTooltips', label: 'Large previews', hint: 'The tooltip shows the emote big, with its name and provider.' },
           { kind: 'number', key: 'chat.emoteScale', label: 'Emote size', hint: 'cyex.tv, 7TV, BTTV and FFZ emotes in chat.', min: 50, max: 300, unit: '%', zero: 'Like the site' },
