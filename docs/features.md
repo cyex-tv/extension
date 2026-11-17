@@ -4,7 +4,7 @@ What the extension does besides emotes, badges and paints, and why. The list was
 
 Columns: **Who has it** (7 = 7TV, F = FFZ, B = BTTV, D = cyex deck). **Twitch / Kick**: feasible in a content script on that site (yes, partly, no). **Effort** and **value**: S, M, L. **Decision**: built (with the PR group) or later, with the reason.
 
-Every feature has its own switch on the settings page (Chat, Emotes and badges, Highlights, Ignores, Usercard, Clean up, Channels), with defaults from cyex deck, except that sounds start off and anything the site already does itself starts off. A feature that 7TV, BTTV or FFZ also has is left to that extension when it is installed (no doubled emote menus or Tab handlers), unless "Draw anyway" is on.
+Every feature has its own switch on the settings page (Chat, Emotes and badges, Highlights, Ignores, Usercard, Hide on Twitch, Hide on Kick, Channels), with defaults from cyex deck, except that sounds start off and anything the site already does itself starts off. A feature that 7TV, BTTV or FFZ also has is left to that extension when it is installed (no doubled emote menus or Tab handlers), unless "Draw anyway" is on.
 Chat cosmetics from cyex.tv (badges before the name, name paints on it) come from `api.cyex.tv/v1/cosmetics` and follow changes live over the events socket. They have their own "cyex.tv" switch (on by default), work on Twitch and Kick, respect "Animations" (first frame when off) and "Readable colours", and win over a 7TV paint on the same name.
 
 ## Messages and reading
@@ -64,7 +64,12 @@ Chat cosmetics from cyex.tv (badges before the name, name paints on it) come fro
 
 | Feature | Who has it | Twitch | Kick | Effort | Value | Decision |
 |---|---|---|---|---|---|---|
-| Hide bits, channel points, predictions, Hype Chat, leaderboard, recommended channels, viewer count | F B | yes | partly | S | M | built (clean up), Twitch |
+| Hide bits, channel points, predictions, Hype Chat, leaderboard, recommended channels, viewer count | 7 F B | yes | partly | S | M | built (clean up), Twitch |
+| Hide on Twitch: side bar (whole, followed, recommended, viewers also watch, stories), top bar (Prime, Get Bits, Ad-Free/Turbo, whisper windows), under the stream (viewer count, sub/gift buttons, bell, unfollow, about and panels), over chat (community highlights, Hype Train, predictions and polls, pinned Hype Chats, leaderboard, gift banners, chat header), in chat (welcome message, sub/gift notices, cheer pictures, reply button, first-time chatter prompt), by the message box (bits, Hype Chat, points), player (extensions, celebrations, title bar, clip button) | 7 F B | yes | - | M | L | built (hide UI): 33 switches, all off by default. One stylesheet, one rule per selector scoped to a class on `<html>`; switching flips a class. Selectors per key in src/sites/twitch.ts, most stable first |
+| Hide on Kick: side bar (whole, following, recommended), pinned message, predictions and polls, gift banners, gift leaderboard, Kick's emote button, Kicks button | - | - | yes | S | M | built (hide UI); 7TV has no Kick hide settings. Kick's markup has few hooks, so these need live checks |
+| Hide chat rules popups (Twitch, Kick) | - | no | no | S | S | not built: both sites make you accept the rules before you can send; hiding the card would leave the message box locked |
+| Hide mod buttons for non-mods | - | - | - | - | - | not needed: the sites only draw them for mods |
+| Hide the whole chat input, send button, player controls | 7 | yes | yes | S | S | not built: hides things people need; the sites' own "hide chat" covers the rest |
 | Claim bonus channel points | 7 F B | yes | no | S | M | built (clean up), off by default |
 | Large emote previews in the tooltip | 7 F B D | yes | yes | S | M | built (clean up group) |
 | Keyboard shortcuts (emote menu) | F D | yes | yes | S | S | built (usercard group) |

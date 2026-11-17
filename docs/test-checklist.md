@@ -41,7 +41,7 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 
 ## Settings page
 
-- [ ] "All settings" in the popup opens the settings page in a tab; its sidebar shows Chat, Emotes and badges, Highlights, Ignores, Usercard, Clean up, Channels.
+- [ ] "All settings" in the popup opens the settings page in a tab; its sidebar shows Chat, Emotes and badges, Highlights, Ignores, Usercard, Hide on Twitch, Hide on Kick, Channels.
 - [ ] A change on the settings page applies to open chats without a reload, and survives closing the browser.
 - [ ] Rules (Highlights → Words, Ignores → Words) can be added, edited and removed; an empty pattern isn't saved.
 - [ ] Changing any setting keeps highlights, timestamps and hidden messages on the lines already in chat.
@@ -96,11 +96,13 @@ Run in Chrome and in Firefox, each on Twitch and on Kick, before a release. Load
 - [ ] "/" outside any text box focuses the message box and doesn't type a slash; inside the message box, search fields or other inputs it types a slash as usual.
 - [ ] Shortcuts off: Alt+E and "/" do nothing.
 
-## Clean up
+## Hide on Twitch and Kick
 
-- [ ] Each "hide" switch hides its part on a live Twitch channel: bits button, channel points summary, prediction/poll cards, paid pinned (Hype Chat) messages, leaderboard, "Recommended channels" in the side nav, gift sub banners, viewer count. The selectors in `src/sites/twitch.ts` are best guesses; check each one on the live site and fix the list if one misses.
-- [ ] Turning a switch off brings the part back without a reload; chat keeps working while parts are hidden (no React errors in the console).
-- [ ] On Kick the hide switches change nothing (no selectors yet).
+- [ ] Settings page: "Hide on Twitch" lists side bar, top bar, under the stream, over chat, in chat, by the message box and player groups, each switch with a one-line hint; "Hide on Kick" lists its own. All start off.
+- [ ] On a live Twitch channel, switch each one on and check its part goes (and comes back when switched off, without a reload): side bar whole/followed/recommended/viewers also watch/stories; Prime crown, Get Bits, Get Ad-Free; whisper windows; viewer count, subscribe and gift buttons, bell, unfollow heart, about and panels; community highlights, Hype Train, a prediction and a poll, pinned Hype Chat, leaderboard, gift banners, chat header; welcome message, sub/gift/raid notices, cheer pictures, reply arrow, first-time chatter prompt; bits, Hype Chat and points by the message box; player extensions, celebrations, title bar on hover, clip button. Selectors are in `src/sites/twitch.ts` (`TWITCH_HIDE_SELECTORS`); a miss means adding the new selector first in its list.
+- [ ] Same on Kick for `KICK_HIDE_SELECTORS` in `src/sites/kick.ts`: side bar whole/following/recommended, pinned message, predictions and polls, gift banners, gift leaderboard, Kick's emote button (ours stays), Kicks button.
+- [ ] With parts hidden the page has no empty gaps where they were, and the layout doesn't jump when switching (it's one class on `<html>`; inspect: `cyextv-hide-…` classes and one `#cyextv-hideClutter` style).
+- [ ] Chat keeps working while parts are hidden (no React errors in the console); "Claim bonus points" still claims with the points hidden.
 - [ ] Auto-claim (off by default): with it on, the points bonus chest is claimed within about 5 s of appearing, also in a background tab, and never clicked twice within 10 s. With 7TV, BTTV or FFZ installed it stays off unless "draw anyway" is on.
 - [ ] Rich tooltips: hovering one of our emotes shows the card (big picture, name, provider and author) with no native tooltip; zero-width overlays are listed below; it flips below near the top of the window, stays inside the viewport at the edges, and disappears on mouse out and on scroll. No fade with reduced motion.
 - [ ] With "Tooltips" off in settings, no card and no native tooltip.

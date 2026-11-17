@@ -1,7 +1,7 @@
 // Site adapters: where chat messages are, which part of a message is its text, who sent it, and
 // which channel this is. One module per site; all selectors live here.
 import type { Platform } from '../providers/types';
-import type { Clutter } from '../settings';
+import type { HideSelectors } from '../hide';
 
 export type Channel = { platform: Platform; id: string; login: string };
 
@@ -39,8 +39,11 @@ export interface Site {
   deletedNotice(message: Element): Element | null;
   /** Whether the page script marked this as the sender's first message in the channel. */
   isFirst(message: Element): boolean;
-  /** CSS selectors of page parts that can be hidden; a missing key isn't available here. */
-  clutter: Partial<Record<Clutter, string>>;
+  /**
+   * Page parts that can be hidden ("Hide on Twitch" / "Hide on Kick"), keyed as in src/hide.ts:
+   * several selectors each, most stable first, so a renamed class only loses one of them.
+   */
+  hide: Readonly<Record<string, HideSelectors>>;
   /** The channel points "claim bonus" button, when shown. */
   claimButton(doc: Document): HTMLElement | null;
   /** The site's user card, when open, and the login it shows. */

@@ -3,7 +3,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EMOTE_CLASS, emoteElement } from '../src/chat/render';
 import { COOLDOWN_MS, POLL_MS, autoClaim, clickable } from '../src/features/cleanup/auto-claim';
-import { clutterCss, hideClutter } from '../src/features/cleanup/hide-clutter';
 import { partsOf, place, richTooltips } from '../src/features/cleanup/rich-tooltips';
 import { shouldRun, type FeatureContext } from '../src/features/types';
 import { FEATURES } from '../src/features/index';
@@ -39,47 +38,6 @@ beforeEach(() => {
   document.body.innerHTML = '';
 });
 afterEach(() => vi.useRealTimers());
-
-describe('hideClutter', () => {
-  it('is on only when a key is on', () => {
-    const f = hideClutter();
-    expect(f.enabled(DEFAULTS)).toBe(false);
-    expect(f.enabled(withChat({ hide: hide('bits') }))).toBe(true);
-  });
-
-  it('writes one rule per switched-on key and skips keys the site lacks', () => {
-    expect(clutterCss(hide('bits', 'points'), { bits: '.b', points: '.p', leaderboard: '.l' })).toBe('.b { display: none !important; }\n.p { display: none !important; }');
-    expect(clutterCss(hide('bits'), {})).toBe('');
-    expect(clutterCss(DEFAULTS.chat.hide, { bits: '.b' })).toBe('');
-  });
-
-  it('injects one style, hides the matches and removes it on stop', () => {
-    document.body.innerHTML = '<div data-a-target="bits-button">b</div><div class="community-points-summary">p</div>';
-    const f = hideClutter();
-    f.start!(ctx(twitch, withChat({ hide: hide('bits') })));
-    const style = document.getElementById('cyextv-hideClutter')!;
-    expect(style.textContent).toContain('[data-a-target="bits-button"]');
-    expect(style.textContent).not.toContain('community-points-summary');
-    expect(document.querySelectorAll('#cyextv-hideClutter')).toHaveLength(1);
-    f.stop!();
-    expect(document.getElementById('cyextv-hideClutter')).toBeNull();
-    f.stop!();
-  });
-
-  it('adds nothing on Kick, which has no selectors yet', () => {
-    const f = hideClutter();
-    f.start!(ctx(kick, withChat({ hide: hide('bits') })));
-    expect(document.getElementById('cyextv-hideClutter')).toBeNull();
-  });
-
-  it('has valid selector lists for every Twitch key', () => {
-    for (const k of CLUTTER) {
-      const sel = twitch.clutter[k];
-      expect(sel, k).toBeTruthy();
-      expect(() => document.querySelectorAll(sel!)).not.toThrow();
-    }
-  });
-});
 
 describe('autoClaim', () => {
   const claim = (extra = '') => {
