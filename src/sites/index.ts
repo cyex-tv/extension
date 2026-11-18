@@ -92,3 +92,6 @@ function safePath(url: string): string {
     return '';
   }
 }
+
+/** A Twitch or Kick channel (user) ID: digits only. */
+export const CHANNEL_ID = /^\d{1,20}$/;

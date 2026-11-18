@@ -1,5 +1,6 @@
 // The content script on Twitch and Kick: picks the site adapter, loads the settings and starts
-// the app. When the settings change (the popup), it starts over with the new ones.
+// the app. When the settings change (the popup), it starts over with the new ones. The app
+// starts before any emote provider has answered, so a slow provider never holds chat up.
 import type { Answer, Request } from '../background/fetcher';
 import { ext } from '../ext';
 import type { FetchJson } from '../providers/types';
@@ -31,11 +32,13 @@ async function start() {
   if (mine !== generation) return;
   theme = settings.theme;
   const next = new App({ site, fetch: fetchJson, settings, local: ext().storage.local });
-  await Promise.all([next.loadGlobals(), next.loadBadges()]);
-  if (mine !== generation) return;
   app?.stop();
   app = next;
+  // Fail open: hidden people, ignores and highlights work at once; emotes and badges are drawn
+  // as each provider answers (the background gives up on one after 5 s).
   next.start();
+  void next.loadGlobals();
+  void next.loadBadges();
 }
 
 ext().storage.onChanged.addListener((changes, area) => {

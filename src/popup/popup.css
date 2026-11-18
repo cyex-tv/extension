@@ -50,7 +50,8 @@
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
-body { width: min(340px, 100vw); min-width: 240px; margin: 0; background: var(--bg); color: var(--text); font: 13px/1.45 var(--font-ui); -webkit-font-smoothing: antialiased; }
+/* max-width against the page, not 100vw: 100vw counts the scroll bar and made a sideways scroll. */
+body { width: 340px; max-width: 100%; min-width: 240px; margin: 0; background: var(--bg); color: var(--text); font: 13px/1.45 var(--font-ui); -webkit-font-smoothing: antialiased; }
 :focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
 button { font: inherit; color: inherit; }
 

@@ -135,6 +135,7 @@ describe('the app with live updates', () => {
     const site = { ...twitch, channel: async () => ({ platform: 'twitch' as const, id: '141981764', login: 'lumen_fox' }) };
     const app = new App({ site, fetch, settings: { ...DEFAULTS }, sockets: factory });
     await app.syncChannel();
+    await app.channelLoad;
     expect(FakeSocket.all.map((s) => s.url).sort()).toEqual([CYEXTV_EVENTS, SEVENTV_EVENTS]);
     expect(app.index.find('pogHop')).toBeDefined();
 

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BACKUP_APP, backupFile, isDefault, itemKeys, readBackup, resetSection, search } from '../src/options/model';
 import { GROUPS, PAGES, getPath } from '../src/options/schema';
 import { DEFAULTS, STORAGE_KEY, merge } from '../src/settings';
+import { SAVE_GAP_MS } from '../src/ui/saver';
 
 const section = (page: string, title: string) => PAGES.find((p) => p.id === page)!.sections.find((s) => s.title === title)!;
 
@@ -104,6 +105,11 @@ describe('the page', () => {
   const flush = async () => {
     for (let i = 0; i < 10; i++) await Promise.resolve();
   };
+  /** Past the save gap, so a change right after another is written too. */
+  const settle = async () => {
+    await new Promise((r) => setTimeout(r, SAVE_GAP_MS + 20));
+    await flush();
+  };
 
   beforeEach(async () => {
     data.sync = {};
@@ -137,11 +143,11 @@ describe('the page', () => {
     expect((document.activeElement as HTMLElement).dataset.fk).toBe(sw.dataset.fk);
     const reset = document.querySelector<HTMLButtonElement>('[aria-label="Reset Side bar to the defaults"]')!;
     reset.click();
-    await flush();
+    await settle();
     expect(merge(data.sync[STORAGE_KEY]).chat.hide.sidebar).toBe(false);
     expect(document.querySelector('#toast')!.textContent).toContain('Side bar is back to the defaults.');
     [...document.querySelectorAll<HTMLButtonElement>('#toast button')].find((b) => b.textContent === 'Undo')!.click();
-    await flush();
+    await settle();
     expect(merge(data.sync[STORAGE_KEY]).chat.hide.sidebar).toBe(true);
   });
 

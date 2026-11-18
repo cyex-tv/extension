@@ -131,6 +131,7 @@ describe('7TV cosmetics in a channel', () => {
     const fetch = async () => null;
     const app = new App({ site, fetch, settings: { ...DEFAULTS, emotes: { ...DEFAULTS.emotes, cyextv: false } }, sockets: factory });
     await app.syncChannel();
+    await app.channelLoad;
     const ws = sockets.find((s) => s.url === SEVENTV_EVENTS)!;
     ws.readyState = 1;
     ws.onopen?.({});

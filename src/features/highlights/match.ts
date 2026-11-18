@@ -1,6 +1,7 @@
 // The matching behind highlights and ignores, kept free of the page so it can be tested alone.
 // Rules are compiled once (`compileRules`, `compileIgnores`); a bad regex never matches and never
-// throws, so one typo in the settings can't stop chat.
+// throws, so one typo in the settings can't stop chat. Regex rules run on RE2 (linear time).
+import { RE2JS } from 're2js';
 import type { ChatSettings, IgnoreRule } from '../../settings';
 
 export type Kind = 'mention' | 'person' | 'word' | 'first' | 'own';
@@ -14,8 +15,8 @@ export type Verdict = {
   wordsOnly: boolean;
   /** Where the winning word rule matched in the text; empty for the other kinds. */
   ranges: [number, number][];
-  /** The winning word rule's pattern (global), for marking words inside separate text nodes. */
-  matcher: RegExp | null;
+  /** The winning word rule's matcher, for marking words inside separate text nodes. */
+  matcher: Matcher | null;
 };
 
 export type Who = { login: string | null; text: string };
@@ -28,114 +29,107 @@ export const COLORS: Record<Kind, string> = {
   own: '#2a6aff',
 };
 
-/** Text handed to a regex rule is cut to this many characters, so a slow pattern stays cheap. */
+/** Text handed to a regex rule is cut to this many characters, so even a large pattern stays cheap. */
 export const REGEX_TEXT_MAX = 200;
-/** The regexes that came from a person's own pattern (the text they see is capped, see `ranges`). */
-const FROM_USER = new WeakSet<RegExp>();
 
-const UNBOUNDED = /^(?:[*+]|\{\d+,\d*\})/;
-/** Any repeat after a group, counted ones included: (.*a){20} is as slow as (.*a)+. */
-const REPEATED = /^(?:[*+]|\{\d+(?:,\d*)?\})/;
+/** A compiled rule: every non-empty match in a text, as [start, end) in UTF-16 units. */
+export type Matcher = { ranges(text: string): [number, number][] };
 
 /**
- * Why a regex pattern is refused, or null when it looks fine. A conservative check, not a proof:
- * it turns down a repeated group that holds a quantifier ((a+)+, (a*)*, (a+)*, (.*a){20}), a
- * quantified group of alternatives that can start alike ((a|aa)+), and backreferences, which are
- * the shapes that make a browser's regex engine take seconds on a short line.
+ * RE2's own words for what it refuses, turned into a sentence for the settings page. Regex rules
+ * run on RE2 (re2js), which matches in time linear in the line, so no pattern can freeze chat;
+ * the price is that backreferences and lookarounds don't exist there.
+ */
+function explain(message: string): string {
+  const m = message.replace(/^error parsing regexp:\s*/, '');
+  if (/invalid escape sequence: `\\(?:[1-9]|k)/.test(m)) return 'Backreferences (like \\1) aren’t supported in regex rules.';
+  if (/`\(\?<?[=!]/.test(m) || /invalid named capture: `\(\?<[=!]/.test(m)) return 'Lookarounds like (?=…), (?!…), (?<=…) and (?<!…) aren’t supported in regex rules.';
+  if (/invalid nested repetition operator/.test(m)) return 'A repeat right after a repeat (like a++ or a*{2}) isn’t supported. Put the inner one in a group: (?:a+)+.';
+  if (/invalid repeat count/.test(m)) return 'Counted repeats go up to {1000}, and a counted repeat inside another one may not multiply past 1000.';
+  if (/expression too large/.test(m)) return 'This pattern is too large. Use fewer or smaller counted repeats.';
+  return `Not a pattern regex rules understand (${m.replace(/`/g, '')}).`;
+}
+
+/**
+ * Why a regex pattern is refused, or null when it's fine. Anything RE2 accepts is fine: its
+ * matching never backtracks, so (a+)+ or .*.*.*Z cost the same as a plain word.
  */
 export function regexProblem(pattern: string): string | null {
-  type Group = { quant: boolean; alts: string[]; plain: boolean };
-  const stack: Group[] = [{ quant: false, alts: [''], plain: true }];
-  const top = () => stack[stack.length - 1]!;
-  const literal = (g: Group, ch: string) => (g.alts[g.alts.length - 1] += ch);
-  for (let i = 0; i < pattern.length; i++) {
-    const c = pattern[i]!;
-    const g = top();
-    if (c === '\\') {
-      const n = pattern[i + 1] ?? '';
-      if (/[1-9]/.test(n) || (n === 'k' && pattern[i + 2] === '<')) return 'Backreferences (like \\1) aren’t allowed in regex rules: they can freeze chat.';
-      g.plain = false;
-      i++;
-    } else if (c === '[') {
-      g.plain = false;
-      for (i++; i < pattern.length && pattern[i] !== ']'; i++) if (pattern[i] === '\\') i++;
-    } else if (c === '(') {
-      stack.push({ quant: false, alts: [''], plain: true });
-      if (pattern[i + 1] === '?') {
-        // (?: (?= (?! (?<= (?<! (?<name>: skip the marker so it isn't read as a quantifier.
-        const m = /^\?(?::|=|!|<=|<!|<[^>]*>)/.exec(pattern.slice(i + 1));
-        if (m) i += m[0].length;
-      }
-    } else if (c === '|') {
-      g.alts.push('');
-    } else if (c === ')' && stack.length > 1) {
-      const done = stack.pop()!;
-      const rest = pattern.slice(i + 1);
-      const unbounded = UNBOUNDED.test(rest);
-      if (REPEATED.test(rest) && done.quant) return 'Nested repeats like (a+)+ can freeze chat. Rewrite the pattern without a repeat inside a repeat.';
-      if (unbounded && done.alts.length > 1) {
-        const heads = done.alts.map((a) => a[0] ?? '');
-        if (!done.plain || heads.some((h, k) => h === '' || heads.indexOf(h) !== k)) return 'A repeated choice like (a|aa)+ can freeze chat. Make the choices start with different letters.';
-      }
-      // A group with a repeat inside, or one repeated itself, counts as a repeat for the group around it.
-      const parent = top();
-      parent.quant ||= done.quant || unbounded;
-      parent.plain = false;
-    } else if (c === '*' || c === '+') {
-      g.quant = true;
-      g.plain = false;
-    } else if (c === '{' && /^\{\d+,\d*\}/.test(pattern.slice(i))) {
-      g.quant = true;
-      g.plain = false;
-    } else if (/[.^$?]/.test(c)) {
-      g.plain = false;
-    } else {
-      literal(g, c);
-    }
+  const r = compileRe2(pattern, 0);
+  return typeof r === 'string' ? r : null;
+}
+
+/**
+ * RE2's cost per character grows with the compiled program, so very large patterns (thousands of
+ * steps, from big counted repeats) are refused: under this, a 200-character line takes a few ms.
+ */
+export const REGEX_PROGRAM_MAX = 1000;
+
+function compileRe2(pattern: string, flags: number): RE2JS | string {
+  let re: RE2JS;
+  try {
+    re = RE2JS.compile(pattern, flags);
+  } catch (e) {
+    return explain(e instanceof Error ? e.message : String(e));
   }
-  return null;
+  if (re.programSize() > REGEX_PROGRAM_MAX) return 'This pattern is too large. Use fewer or smaller counted repeats.';
+  return re;
+}
+
+function re2Matcher(pattern: string, matchCase: boolean): Matcher | null {
+  const re = compileRe2(pattern, matchCase ? 0 : RE2JS.CASE_INSENSITIVE);
+  if (typeof re === 'string') return null;
+  return {
+    ranges(text) {
+      const s = text.length > REGEX_TEXT_MAX ? text.slice(0, REGEX_TEXT_MAX) : text;
+      const out: [number, number][] = [];
+      const m = re.matcher(s);
+      while (m.find()) {
+        const a = m.start();
+        const b = m.end();
+        if (b > a) out.push([a, b]);
+      }
+      return out;
+    },
+  };
+}
+
+function nativeMatcher(re: RegExp): Matcher {
+  return {
+    ranges(text) {
+      const out: [number, number][] = [];
+      re.lastIndex = 0;
+      for (let m = re.exec(text); m; m = re.exec(text)) {
+        if (m[0].length === 0) re.lastIndex++;
+        else out.push([m.index, m.index + m[0].length]);
+      }
+      re.lastIndex = 0;
+      return out;
+    },
+  };
 }
 
 const NOT_WORD = '[\\p{L}\\p{N}_]';
 const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
-/** A rule's pattern as a global regex, or null when it can't be compiled. Plain text matches whole words. */
-export function compilePattern(pattern: string, opts: { regex: boolean; wholeWord: boolean; matchCase: boolean }): RegExp | null {
+/**
+ * A rule's pattern as a matcher, or null when it can't be compiled. Plain text matches whole words
+ * (an escaped literal on the browser's engine, which can't backtrack badly); a regex runs on RE2.
+ */
+export function compilePattern(pattern: string, opts: { regex: boolean; wholeWord: boolean; matchCase: boolean }): Matcher | null {
   if (!pattern) return null;
-  const flags = 'g' + (opts.matchCase ? '' : 'i');
-  if (opts.regex) {
-    if (regexProblem(pattern)) return null;
-    // Unicode mode is stricter than most people expect; fall back to the plain flavour.
-    for (const f of [flags + 'u', flags]) {
-      try {
-        const re = new RegExp(pattern, f);
-        FROM_USER.add(re);
-        return re;
-      } catch {
-        /* try the next flavour */
-      }
-    }
-    return null;
-  }
+  if (opts.regex) return re2Matcher(pattern, opts.matchCase);
   const body = escape(pattern);
   try {
-    return new RegExp(opts.wholeWord ? `(?<!${NOT_WORD})${body}(?!${NOT_WORD})` : body, flags + 'u');
+    return nativeMatcher(new RegExp(opts.wholeWord ? `(?<!${NOT_WORD})${body}(?!${NOT_WORD})` : body, 'gu' + (opts.matchCase ? '' : 'i')));
   } catch {
     return null;
   }
 }
 
-/** Every non-empty match of `re` in `s`, as [start, end). */
-export function ranges(re: RegExp, text: string): [number, number][] {
-  const s = FROM_USER.has(re) && text.length > REGEX_TEXT_MAX ? text.slice(0, REGEX_TEXT_MAX) : text;
-  const out: [number, number][] = [];
-  re.lastIndex = 0;
-  for (let m = re.exec(s); m; m = re.exec(s)) {
-    if (m[0].length === 0) re.lastIndex++;
-    else out.push([m.index, m.index + m[0].length]);
-  }
-  re.lastIndex = 0;
-  return out;
+/** Every non-empty match of `m` in `text`, as [start, end). */
+export function ranges(m: Matcher, text: string): [number, number][] {
+  return m.ranges(text);
 }
 
 /** Logins that count as the viewer: their own and the extra names. */

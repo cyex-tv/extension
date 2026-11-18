@@ -128,21 +128,21 @@ describe('the page and the quota', () => {
     expect(merge(data.sync[STORAGE_KEY]).chat.hide.sidebar).toBe(false);
   });
 
-  it('turns a regex that can freeze chat away with an inline message, and keeps the rule as it was', async () => {
-    await open('#highlights', { chat: { highlights: [rule('(a+)+$')] } });
+  it('turns a regex RE2 can’t run away with an inline message, and keeps the rule as it was', async () => {
+    await open('#highlights', { chat: { highlights: [rule('(a)\\1')] } });
     const box = [...document.querySelectorAll<HTMLInputElement>('#page .rule .check input')].find((i) => i.parentElement!.textContent === 'Regex')!;
     box.click();
     await flush();
     const err = document.querySelector('#page .field-error')!;
     expect(err.getAttribute('role')).toBe('alert');
-    expect(err.textContent).toMatch(/Nested repeats/);
+    expect(err.textContent).toMatch(/Backreferences/);
     expect(merge(data.sync[STORAGE_KEY]).chat.highlights[0]!.regex).toBe(false);
     expect(syncSet).not.toHaveBeenCalled();
   });
 
   it('says a stored unsafe regex is not used', async () => {
-    await open('#ignores', { chat: { ignores: [{ pattern: '(a+)+$', regex: true, matchCase: false, hide: true, swap: '***' }] } });
-    expect(document.querySelector('#page .field-error')!.textContent).toMatch(/^Not used: Nested repeats/);
+    await open('#ignores', { chat: { ignores: [{ pattern: 'a(?=b)', regex: true, matchCase: false, hide: true, swap: '***' }] } });
+    expect(document.querySelector('#page .field-error')!.textContent).toMatch(/^Not used: Lookarounds/);
   });
 
   it('import: asks first, switches regex rules off with a notice, then saves settings before notes', async () => {
@@ -245,12 +245,12 @@ describe('the popup and the quota', () => {
 // --- 2. Regex ----------------------------------------------------------------------------------
 
 describe('regex rules that can freeze chat', () => {
-  it.each(['(a+)+$', '(x*)*', '(x+)*', '(a+){2,}', '(.*a){20}', '(.*a){20}$', '(\w+x){3,5}', '((ab)+)+', '(?:a+)+b', '(a|aa)+$', '(\\w+\\s?)*$', '(a)\\1', '(?<n>a)\\k<n>'])('refuses %s', (p) => {
+  it.each(['(a)\\1', '(?<n>a)\\k<n>','(?=a)b', '(?<!x)y+', 'a++', '(?:a{100}){100}', '(', '[a-'])('refuses %s with a reason', (p) => {
     expect(regexProblem(p), p).not.toBeNull();
     expect(compilePattern(p, { regex: true, wholeWord: false, matchCase: false })).toBeNull();
   });
 
-  it.each(['^hello', 'gg+', '(foo|bar)+', '(ab)?c', '[a-z]+\\d{2}', '\\bkek\\b', '(?<!x)y+', '(?=a)b', 'a{2,3}', '(ab){3}', '(ab|cd){2}', '[(]a+[)]+', '\\(a+\\)+'])('allows %s', (p) => {
+  it.each(['(a+)+$', '(x*)*', '(a+){2,}', '(.*a){20}', '(a|aa)+$', '^hello', 'gg+', '(foo|bar)+', '(ab)?c', '[a-z]+\\d{2}', '\\bkek\\b','a{2,3}', '(ab|cd){2}', '[(]a+[)]+', '(?<n>a)'])('allows %s (RE2 runs it in linear time)', (p) => {
     expect(regexProblem(p), p).toBeNull();
     expect(compilePattern(p, { regex: true, wholeWord: false, matchCase: false })).not.toBeNull();
   });

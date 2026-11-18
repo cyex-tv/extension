@@ -15,9 +15,23 @@ export const HIDDEN_EMOTES_MAX = 200;
 export type HiddenEmote = { provider: ProviderId; id: string; name: string; /** Its smallest picture, for the settings list. */ url: string };
 
 const ID = /^[\w-]{1,64}$/;
+
+/** Where the providers serve emote pictures. A picture from anywhere else (a hand-made backup) is dropped. */
+export const EMOTE_CDN_HOSTS = ['cdn.7tv.app', 'cdn.betterttv.net', 'cdn.frankerfacez.com', 'cdn.cyex.tv'];
+
+/** `url` when it is an https picture on a provider's CDN, else ''. */
+export function cdnUrl(url: unknown): string {
+  if (typeof url !== 'string' || url.length > 400) return '';
+  try {
+    const u = new URL(url);
+    return u.protocol === 'https:' && !u.username && !u.password && !u.port && EMOTE_CDN_HOSTS.includes(u.hostname) ? url : '';
+  } catch {
+    return '';
+  }
+}
 export const emoteKey = (e: Pick<HiddenEmote, 'provider' | 'id'>) => `${e.provider}:${e.id}`;
 
-/** Stored entries, checked: known providers, plain IDs, https pictures, capped, no duplicates. */
+/** Stored entries, checked: known providers, plain IDs, pictures only from the providers' CDNs, capped, no duplicates. */
 export function readHidden(stored: unknown): HiddenEmote[] {
   if (!Array.isArray(stored)) return [];
   const seen = new Set<string>();
@@ -28,7 +42,7 @@ export function readHidden(stored: unknown): HiddenEmote[] {
     const o = v as Record<string, unknown>;
     const provider = DEFAULT_ORDER.find((p) => p === o.provider);
     if (!provider || typeof o.id !== 'string' || !ID.test(o.id) || typeof o.name !== 'string' || !o.name.trim()) continue;
-    const url = typeof o.url === 'string' && /^https:\/\//.test(o.url) && o.url.length <= 400 ? o.url : '';
+    const url = cdnUrl(o.url);
     const entry = { provider, id: o.id, name: o.name.trim().slice(0, 60), url };
     if (seen.has(emoteKey(entry))) continue;
     seen.add(emoteKey(entry));
@@ -130,7 +144,7 @@ export function emoteOf(wrap: HTMLElement): HiddenEmote | null {
   if (!provider || !ID.test(id) || !name) return null;
   const img = wrap.querySelector<HTMLImageElement>('img:not(.cyextv-over)');
   const src = img?.getAttribute('src') ?? '';
-  return { provider, id, name, url: /^https:\/\//.test(src) ? src : '' };
+  return { provider, id, name, url: cdnUrl(src) };
 }
 
 export function hideEmotes(store: HiddenEmotesStore = hiddenEmotes): Feature {
