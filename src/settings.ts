@@ -385,6 +385,9 @@ const kb = (bytes: number) => (Math.round(bytes / 102.4) / 10).toFixed(1).replac
 /** The human message for settings that don't fit synced storage. */
 export const tooBigMessage = (bytes: number) => `Too big to sync: ${kb(bytes)} KB of ${SYNC_QUOTA_BYTES / 1024} KB. Remove some rules or names.`;
 
+export const SAVING_TOO_FAST = 'Saving too fast, try again in a moment.';
+export const COULD_NOT_SAVE = 'Couldn’t save your settings. Try again in a moment.';
+
 export type SaveResult = { ok: true } | { ok: false; message: string };
 
 /** Whether the settings fit synced storage; the message says by how much when they don't. */
@@ -395,7 +398,7 @@ export function fits(settings: Settings): SaveResult {
 
 /**
  * `save` that never throws: too big (checked first, nothing written) or refused by the browser
- * (quota, a broken profile) comes back as a message the page can show.
+ * (byte quota, too many writes a minute, a broken profile) comes back as a message the page can show.
  */
 export async function trySave(area: ExtStorageArea, settings: Settings): Promise<SaveResult> {
   const size = fits(settings);
@@ -405,8 +408,11 @@ export async function trySave(area: ExtStorageArea, settings: Settings): Promise
     return { ok: true };
   } catch (e) {
     const text = e instanceof Error ? e.message : String(e);
-    if (/quota/i.test(text)) return { ok: false, message: tooBigMessage(syncBytes(settings)) };
-    return { ok: false, message: 'Couldn’t save your settings. Try again in a moment.' };
+    // Synced storage also limits writes a minute and an hour (MAX_WRITE_OPERATIONS_PER_MINUTE):
+    // that's "too fast", not "too big".
+    if (/WRITE_OPERATIONS|too many writes|rate limit/i.test(text)) return { ok: false, message: SAVING_TOO_FAST };
+    if (/QUOTA_BYTES/i.test(text)) return { ok: false, message: tooBigMessage(syncBytes(settings)) };
+    return { ok: false, message: COULD_NOT_SAVE };
   }
 }
 

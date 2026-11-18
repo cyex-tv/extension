@@ -36,6 +36,11 @@ export function resetSection(settings: Settings, s: Section): Settings {
   return merge(sectionKeys(s).reduce<Settings>((acc, k) => setPath(acc, k, structuredClone(getPath(DEFAULTS, k))), settings));
 }
 
+/** Undo for a section reset: that section's keys as they were in `before`, everything else as in `settings`. */
+export function restoreSection(settings: Settings, s: Section, before: Settings): Settings {
+  return merge(sectionKeys(s).reduce<Settings>((acc, k) => setPath(acc, k, structuredClone(getPath(before, k))), settings));
+}
+
 /** What a search matches: the item's words, its section's and its page's. */
 function words(page: Page, section: Section, item: Item): string {
   const own = 'label' in item ? `${item.label} ${item.hint ?? ''}` : '';

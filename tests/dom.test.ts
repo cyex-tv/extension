@@ -129,6 +129,7 @@ describe('the app', () => {
     const app = new App({ site: site({ id: '141981764', login: 'lumen_fox' }), fetch: apis.fetch, settings: settings(), sockets: null });
     await app.loadGlobals();
     expect(await app.syncChannel()).toBe(true);
+    await app.channelLoad;
     expect(await app.syncChannel()).toBe(false);
     expect(app.index.find('catJAM')?.provider).toBe('7tv');
     expect(app.index.find('pogHop')?.provider).toBe('cyextv');
@@ -157,6 +158,7 @@ describe('the app', () => {
     });
     await app.loadGlobals();
     await app.syncChannel();
+    await app.channelLoad;
     document.body.innerHTML = TWITCH_LINE;
     app.process(document.querySelector('[data-a-target="chat-line-message"]')!);
     expect(document.querySelectorAll('.cyextv-emote')).toHaveLength(0);
@@ -167,6 +169,7 @@ describe('the app', () => {
     const app = new App({ site: site({ id: '141981764', login: 'lumen_fox' }), fetch: apis.fetch, settings: settings(), sockets: null });
     await app.loadGlobals();
     await app.syncChannel();
+    await app.channelLoad;
     // The personal set of 111 has pogHop; 222's is empty.
     document.body.innerHTML = TWITCH_LINE.replace('hi catJAM there', 'hi pogHop there') + TWITCH_LINE.replace('data-cyextv-uid="111"', 'data-cyextv-uid="222"');
     const lines = document.querySelectorAll('[data-a-target="chat-line-message"]');

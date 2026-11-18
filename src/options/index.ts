@@ -7,11 +7,12 @@ import { regexProblem } from '../features/highlights/match';
 import { NICK_MAX, NOTE_MAX, NotesStore } from '../features/people/notes';
 import { COSMETIC_LABEL, PROVIDER_LABEL, move, setCosmetics, setEmotes } from '../popup/model';
 import type { ProviderId } from '../providers/types';
-import { DEFAULTS, type Settings, fits, load, merge, trySave } from '../settings';
+import { DEFAULTS, STORAGE_KEY, type Settings, load, merge } from '../settings';
+import { type Patch, type Saver, createSaver } from '../ui/saver';
 import { ICON, el, icon, input as inputEl, segmented, toggle } from '../ui/dom';
 import { useTheme } from '../ui/theme';
 import { toast } from '../ui/toast';
-import { type Imported, backupFile, isDefault, readBackup, regexNotice, resetSection, search } from './model';
+import { type Imported, backupFile, isDefault, readBackup, regexNotice, resetSection, restoreSection, search } from './model';
 import { GROUPS, type Item, PAGES, type Page, type RuleField, type Section, getPath, setPath } from './schema';
 
 let settings: Settings;
@@ -23,33 +24,23 @@ const hidden = new HiddenEmotesStore();
 /** A regex rule the page turned down, shown under its row until the next change. */
 let ruleError: { key: string; index: number; text: string } | null = null;
 
+let saver: Saver;
+
 /**
- * Shows and saves the next settings. Too big for synced storage (or refused by the browser): the
- * page and the stored copy stay as they were and a message says why. True when it saved.
+ * Shows and saves the next settings: only what changed from what the page shows, applied to the
+ * settings stored now (the popup may have changed others meanwhile). Too big for synced storage
+ * (or refused by the browser): the page shows what is stored and a message says why. True when it saved.
  */
 async function update(next: Settings): Promise<boolean> {
-  const previous = settings;
-  // Through `merge`, so the page can only ever store what the content scripts accept.
-  const merged = merge(next);
   ruleError = null;
-  const size = fits(merged);
-  if (!size.ok) {
-    toast(size.message);
-    render();
-    return false;
-  }
-  settings = merged;
-  useTheme(document, settings.theme);
-  render();
-  const saved = await trySave(ext().storage.sync, merged);
-  if (saved.ok) return true;
-  // Roll back: what the page shows and what is stored.
-  settings = previous;
-  useTheme(document, settings.theme);
-  render();
-  await trySave(ext().storage.sync, previous);
-  toast(saved.message);
-  return false;
+  // Through `merge`, so the page can only ever store what the content scripts accept.
+  return (await saver.update(merge(next))).ok;
+}
+
+/** Like `update`, for changes that are a function of what is stored (reset, undo, import). */
+async function apply(patch: Patch): Promise<boolean> {
+  ruleError = null;
+  return (await saver.apply(patch)).ok;
 }
 
 const set = (key: string, value: unknown) => update(setPath(settings, key, value));
@@ -213,7 +204,7 @@ function hiddenEmotesItem(): HTMLElement {
   if (!all.length) return el('p', { className: 'hint block' }, 'None yet. Right-click an emote in chat to hide it.');
   const panel = el('div', { className: 'panel' });
   for (const e of all) {
-    const text = el('span', { className: 'text' }, el('span', { className: 'name' }, e.name), el('span', { className: 'hint' }, PROVIDER_LABEL[e.provider]));
+    const text = el('span', { className: 'text' }, el('span', { className: 'name clip', title: e.name }, e.name), el('span', { className: 'hint' }, PROVIDER_LABEL[e.provider]));
     const kids: Node[] = [];
     if (e.url) {
       const img = el('img', { className: 'emote-thumb', src: e.url, alt: '' });
@@ -275,13 +266,13 @@ function backupItem(): HTMLElement {
     const beforeNotes = notes.all();
     const beforeHidden = hidden.list();
     // Settings first: when they don't save, nothing else is touched (no half import).
-    if (!(await update(result.settings))) return;
+    if (!(await apply(() => merge(result.settings)))) return;
     if (result.notes) await notes.setAll(result.notes);
     if (result.hidden) await hidden.set(result.hidden);
     toast(result.regexOff ? `Imported. ${regexNotice(result.regexOff)}` : 'Imported.', () => {
       void notes.setAll(beforeNotes);
       void hidden.set(beforeHidden);
-      void update(before);
+      void apply(() => before);
     });
   }
   picker.addEventListener('change', async () => {
@@ -314,8 +305,8 @@ function backupItem(): HTMLElement {
     clearTimeout(resetArmed);
     resetArmed = null;
     const before = settings;
-    void update(DEFAULTS);
-    toast('Every setting is back to its default.', () => void update(before));
+    void apply(() => DEFAULTS);
+    toast('Every setting is back to its default.', () => void apply(() => before));
   });
   return el(
     'div',
@@ -375,8 +366,9 @@ function sectionNode(p: Page, s: Section, items: Item[], withPage: boolean): HTM
   if (!isDefault(settings, s)) {
     const r = button('Reset', 'link', () => {
       const before = settings;
-      void update(resetSection(settings, s));
-      toast(`${s.title} is back to the defaults.`, () => void update(before));
+      void apply((now) => resetSection(now, s));
+      // Undo puts back this section only; changes made elsewhere since stay.
+      toast(`${s.title} is back to the defaults.`, () => void apply((now) => restoreSection(now, s, before)));
     });
     r.setAttribute('aria-label', `Reset ${s.title} to the defaults`);
     r.dataset.fk = `reset:${p.id}:${s.title}`;
@@ -454,6 +446,16 @@ function render() {
 
 async function main() {
   settings = await load(ext().storage.sync);
+  saver = createSaver({
+    area: ext().storage.sync,
+    initial: settings,
+    show: (s) => {
+      settings = s;
+      useTheme(document, s.theme);
+      render();
+    },
+    fail: (message) => toast(message),
+  });
   useTheme(document, settings.theme);
   await notes.load(ext().storage.local);
   notes.subscribe(render);
@@ -481,14 +483,7 @@ async function main() {
   // Another tab (or the popup) changed the settings: show them.
   ext().storage.onChanged.addListener((changes, area) => {
     if (area === 'local' && HIDDEN_EMOTES_KEY in changes) hidden.replace(changes[HIDDEN_EMOTES_KEY]?.newValue);
-    if (area === 'sync' && 'settings' in changes) {
-      void load(ext().storage.sync).then((s) => {
-        if (JSON.stringify(s) === JSON.stringify(settings)) return;
-        settings = s;
-        useTheme(document, s.theme);
-        render();
-      });
-    }
+    if (area === 'sync' && STORAGE_KEY in changes) saver.stored(changes[STORAGE_KEY]?.newValue);
   });
   render();
 }

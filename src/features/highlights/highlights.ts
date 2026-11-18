@@ -5,7 +5,7 @@ import { textNodes } from '../../chat/render';
 import type { Feature, FeatureContext } from '../types';
 import { CHIME_WARMUP_MS, Chime } from './chime';
 import { Inbox } from './inbox';
-import { type Rules, compileRules, ranges } from './match';
+import { type Matcher, type Rules, compileRules, ranges } from './match';
 
 const STYLE_ID = 'cyextv-highlights';
 const CSS = `
@@ -100,7 +100,7 @@ export function highlights(): Feature {
 }
 
 /** Wraps each match in `<mark class="cyextv-word">`, inside plain text nodes only. */
-function markWords(body: Element, skip: string, re: RegExp): Split[] {
+function markWords(body: Element, skip: string, re: Matcher): Split[] {
   const doc = body.ownerDocument;
   const done: Split[] = [];
   for (const node of textNodes(body, skip)) {

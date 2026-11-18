@@ -54,7 +54,7 @@ afterEach(() => {
 describe('what is stored', () => {
   it('keeps good entries and drops the rest', () => {
     const list = readHidden([
-      { provider: '7tv', id: 'A1', name: ' catJAM ', url: 'https://x/1' },
+      { provider: '7tv', id: 'A1', name: ' catJAM ', url: 'https://cdn.7tv.app/emote/A1/1x.webp' },
       { provider: '7tv', id: 'A1', name: 'dupe', url: '' },
       { provider: 'nope', id: 'B', name: 'x', url: '' },
       { provider: 'bttv', id: 'bad id!', name: 'x', url: '' },
@@ -64,7 +64,7 @@ describe('what is stored', () => {
       null,
     ]);
     expect(list).toEqual([
-      { provider: '7tv', id: 'A1', name: 'catJAM', url: 'https://x/1' },
+      { provider: '7tv', id: 'A1', name: 'catJAM', url: 'https://cdn.7tv.app/emote/A1/1x.webp' },
       { provider: 'ffz', id: '6', name: 'ok', url: '' },
     ]);
     expect(readHidden('x')).toEqual([]);

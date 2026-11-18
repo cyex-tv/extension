@@ -3,7 +3,7 @@
 // tags each message with its sender and <html> with the channel ID. Every Twitch selector the
 // extension uses is in this file, so a Twitch redesign is a fix here.
 import type { HideSelectors, TwitchHide } from '../hide';
-import { type Channel, type Site, cardLogin, cookie, loginFromPath } from './index';
+import { CHANNEL_ID, type Channel, type Site, cardLogin, cookie, loginFromPath } from './index';
 
 // What "Hide on Twitch" hides. Several selectors per part, most stable first (data attributes,
 // then aria labels, then class names; `[class*=]` for Twitch's hashed CSS-module names). Hiding is
@@ -82,9 +82,10 @@ export const twitch: Site = {
     return (message.getAttribute('data-a-user') ?? message.querySelector('.chat-author__display-name')?.getAttribute('data-a-user'))?.toLowerCase() ?? null;
   },
   async channel(): Promise<Channel | null> {
+    // Anything on <html> can be written by the page: only a Twitch user ID (digits) is used, in topics and URLs.
     const id = document.documentElement.dataset.cyextvChannel;
     const login = loginFromPath(location.pathname);
-    return id && login ? { platform: 'twitch', id, login } : null;
+    return id && CHANNEL_ID.test(id) && login ? { platform: 'twitch', id, login } : null;
   },
   skip: '[data-a-target="emote-name"], .mention-fragment, .link-fragment, a, img, button',
   badgeSlot(message) {

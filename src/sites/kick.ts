@@ -3,7 +3,7 @@
 // comes from Kick's public channel endpoint (same origin): cyex.tv and 7TV key Kick channels by
 // the broadcaster's user ID.
 import type { HideSelectors, KickHide } from '../hide';
-import { type Channel, type Site, cardLogin, loginFromPath } from './index';
+import { CHANNEL_ID, type Channel, type Site, cardLogin, loginFromPath } from './index';
 
 // Every Kick selector the extension uses is in this file.
 
@@ -69,9 +69,12 @@ export const kick: Site = {
     if (!login) return null;
     if (cached?.login === login) return cached.channel;
     try {
-      const res = await fetch(`/api/v2/channels/${encodeURIComponent(login)}`, { headers: { accept: 'application/json' } });
+      // Kick answering slowly must not hold chat up for long: then the channel is unknown for now.
+      const res = await fetch(`/api/v2/channels/${encodeURIComponent(login)}`, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(5000) });
       const data = res.ok ? ((await res.json()) as { user_id?: unknown; slug?: unknown }) : null;
-      const id = data && (typeof data.user_id === 'number' || typeof data.user_id === 'string') ? String(data.user_id) : null;
+      const raw = data && (typeof data.user_id === 'number' || typeof data.user_id === 'string') ? String(data.user_id) : null;
+      // Kick's user IDs are whole numbers; anything else isn't used in topics or URLs.
+      const id = raw && CHANNEL_ID.test(raw) ? raw : null;
       cached = { login, channel: id ? { platform: 'kick', id, login } : null };
     } catch {
       return null;

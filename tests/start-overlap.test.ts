@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 // Settings saved twice quickly: only the latest start may take over, and a superseded App never starts.
+// Chat starts without waiting for the providers (fail open).
 import { describe, expect, it, vi } from 'vitest';
 
 const apps: { stopped: boolean; started: boolean }[] = [];
@@ -38,27 +39,27 @@ vi.mock('../src/settings', () => ({ STORAGE_KEY: 'k', load: async () => ({}) }))
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
 describe('content start', () => {
-  it('never starts a superseded App and stops the previous one when replaced', async () => {
+  it('starts chat before any provider answers, never starts a superseded App, and stops the previous one', async () => {
     await import('../src/content/index');
     await tick();
-    // The first start waits on its loads; two more saves come in.
+    // Fail open: the first App runs while its global sets are still loading.
+    expect(apps).toHaveLength(1);
+    expect(apps[0]!.started).toBe(true);
+    expect(loads).toHaveLength(1);
+    // Two saves come in: the first is superseded while still reading settings, so it builds nothing.
     onChanged = (onChanged as unknown as (c: object, a: string) => void).bind(null, { k: 1 }, 'sync');
     onChanged();
     onChanged();
     await tick();
-    // The middle save was superseded while still reading settings, so it never built an App.
     expect(apps).toHaveLength(2);
-    // The latest finishes first; the older one must not start or replace it.
-    loads[1]!();
-    await tick();
-    loads[0]!();
-    await tick();
-    expect(apps.map((a) => a.started)).toEqual([false, true]);
+    expect(apps.map((a) => a.started)).toEqual([true, true]);
+    expect(apps[0]!.stopped).toBe(true);
     expect(apps[1]!.stopped).toBe(false);
-    // The next save replaces the running one.
-    onChanged();
+    // Loads finishing late change nothing about which App runs.
+    loads.forEach((r) => r());
     await tick();
-    loads[2]!();
+    expect(apps[1]!.stopped).toBe(false);
+    onChanged();
     await tick();
     expect(apps[1]!.stopped).toBe(true);
     expect(apps[2]!.started).toBe(true);

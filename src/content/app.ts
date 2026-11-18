@@ -21,6 +21,10 @@ import type { Settings } from '../settings';
 import type { Channel, Site } from '../sites/index';
 
 const PERSONAL_BATCH_MS = 400;
+/** Messages waiting for the next flush, at most (a hidden tab can go long without one). */
+export const PENDING_MAX = 500;
+/** Chatters remembered as recently asked about (personal emotes, cyex.tv looks), at most; the oldest go. */
+export const SEEN_MAX = 5000;
 /** cyex deck's badge spec asks for every 30 minutes; BTTV's and FFZ's lists change as rarely. */
 export const BADGE_REFRESH_MS = 30 * 60_000;
 /** Badge lists fetched on a timer; 7TV's arrive over its socket instead. */
@@ -53,8 +57,11 @@ export type AppDeps = {
 export class App {
   readonly index: EmoteIndex;
   private channel: Channel | null = null;
-  private globals: EmoteSet[] = [];
-  private channelSets: EmoteSet[] = [];
+  /** Sets by provider, filled in as each provider answers (a slow one never holds the others back). */
+  private globals = new Map<ProviderId, EmoteSet>();
+  private channelSets = new Map<ProviderId, EmoteSet>();
+  /** A redraw of the messages on screen is queued (sets arrived after they were drawn). */
+  private redrawQueued = false;
   private allowPersonal = false;
   private personalSeen = new Map<string, number>();
   private personalQueue = new Set<string>();
@@ -194,40 +201,75 @@ export class App {
 
   private rebuild() {
     const on = new Set(this.enabled());
-    this.index.setSets([...this.globals, ...this.channelSets].filter((s) => on.has(s.provider)));
+    this.index.setSets([...this.globals.values(), ...this.channelSets.values()].filter((s) => on.has(s.provider)));
   }
 
-  async loadGlobals() {
-    const results = await Promise.allSettled(this.enabled().map((id) => PROVIDERS[id].global(this.deps.fetch)));
-    this.globals = results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
+  /** Sets changed: rebuild the index and, once started, draw the messages on screen again (once per frame). */
+  private setsArrived() {
     this.rebuild();
+    if (!this.observer || this.redrawQueued || this.stopped) return;
+    this.redrawQueued = true;
+    later(this.doc, () => {
+      this.redrawQueued = false;
+      if (this.stopped) return;
+      this.deps.site.messages(this.doc).forEach((m) => this.process(m));
+    });
   }
 
-  /** Loads the channel's sets when the channel changed. True when it did. */
+  /** Global sets, each provider on its own: chat runs meanwhile and is redrawn as each one arrives. */
+  async loadGlobals() {
+    await Promise.allSettled(
+      this.enabled().map(async (id) => {
+        const set = await PROVIDERS[id].global(this.deps.fetch);
+        if (this.stopped) return;
+        this.globals.set(id, set);
+        this.setsArrived();
+      }),
+    );
+  }
+
+  /** The channel's sets being loaded (see `syncChannel`); tests await it. */
+  channelLoad: Promise<void> = Promise.resolve();
+
+  /**
+   * Notes a channel change and starts loading its sets, without waiting for them: messages are
+   * processed (hidden people, ignores, highlights) at once and redrawn as each provider answers.
+   * True when the channel changed.
+   */
   async syncChannel(): Promise<boolean> {
     const ch = await this.deps.site.channel();
     if (this.stopped) return false;
     if (!ch || (this.channel && ch.id === this.channel.id && ch.platform === this.channel.platform)) return false;
     this.channel = ch;
-    // Another channel: its own 7TV cosmetics.
+    // Another channel: none of the last one's sets, cosmetics or personal-emote permission.
     this.seventvLooks = null;
-    if (!(await this.loadChannel(ch, false)) || this.stopped) return false;
-    const allow = this.enabled().includes('cyextv') ? await allowsPersonal(this.deps.fetch, ch.platform, ch.id).catch(() => false) : false;
-    if (this.stopped) return false;
-    this.allowPersonal = allow;
+    this.channelSets = new Map();
+    this.allowPersonal = false;
     this.personalSeen.clear();
-    this.watchLive(ch);
+    this.rebuild();
+    this.channelLoad = this.afterChannel(ch);
     return true;
   }
 
-  /** (Re)loads the current channel's sets; false when the channel changed meanwhile. */
+  private async afterChannel(ch: Channel) {
+    if (!(await this.loadChannel(ch, false)) || this.stopped) return;
+    const allow = this.enabled().includes('cyextv') ? await allowsPersonal(this.deps.fetch, ch.platform, ch.id).catch(() => false) : false;
+    if (this.stopped || this.channel !== ch) return;
+    this.allowPersonal = allow;
+    this.watchLive(ch);
+  }
+
+  /** (Re)loads the current channel's sets, each provider as it answers; false when the channel changed meanwhile. */
   private async loadChannel(ch: Channel, fresh: boolean): Promise<boolean> {
-    const on = this.enabled();
-    const results = await Promise.allSettled(on.map((id) => PROVIDERS[id].channel(this.deps.fetch, ch.platform, ch.id, fresh)));
-    if (this.channel !== ch || this.stopped) return false;
-    this.channelSets = results.flatMap((r) => (r.status === 'fulfilled' ? [r.value] : []));
-    this.rebuild();
-    return true;
+    await Promise.allSettled(
+      this.enabled().map(async (id) => {
+        const set = await PROVIDERS[id].channel(this.deps.fetch, ch.platform, ch.id, fresh);
+        if (this.channel !== ch || this.stopped) return;
+        this.channelSets.set(id, set);
+        this.setsArrived();
+      }),
+    );
+    return this.channel === ch && !this.stopped;
   }
 
   /** Live updates for the channel's cyex.tv and 7TV sets: a change reloads them. */
@@ -235,7 +277,7 @@ export class App {
     if (this.stopped || !this.live) return;
     const on = this.enabled();
     if (this.seventvLooks === null || !this.seventvCosmeticsOn()) this.seventvLooks = this.seventvCosmeticsOn() ? new SeventvCosmetics(ch.platform) : null;
-    const setOf = (p: ProviderId) => this.channelSets.find((s) => s.provider === p)?.setId;
+    const setOf = (p: ProviderId) => this.channelSets.get(p)?.setId;
     this.live.watch(
       {
         platform: ch.platform,
@@ -274,10 +316,15 @@ export class App {
   /** Loads every enabled badge provider's list; a failing one keeps what it had. */
   async loadBadges() {
     const on = this.badgeProviders().filter((p) => BADGE_SOURCES[p]);
-    const results = await Promise.allSettled(on.map((p) => BADGE_SOURCES[p]!(this.deps.fetch)));
-    results.forEach((r, i) => {
-      if (r.status === 'fulfilled') this.badges.set(on[i]!, r.value);
-    });
+    await Promise.allSettled(
+      on.map(async (p) => {
+        const list = await BADGE_SOURCES[p]!(this.deps.fetch);
+        if (this.stopped) return;
+        this.badges.set(p, list);
+        // Chat was drawn before this list came: put the badges on the chatters on screen.
+        if (this.observer) this.relook([...new Set([...this.doc.querySelectorAll<HTMLElement>('[data-cyextv-uid]')].map((m) => m.dataset.cyextvUid ?? ''))]);
+      }),
+    );
   }
 
   /** The badges a chatter shows, provider by provider. */
@@ -415,7 +462,7 @@ export class App {
   private wantPersonal(userId: string) {
     const seen = this.personalSeen.get(userId);
     if (seen !== undefined && this.now() - seen < PERSONAL_TTL_MS) return;
-    this.personalSeen.set(userId, this.now());
+    remember(this.personalSeen, userId, this.now());
     this.personalQueue.add(userId);
     this.personalTimer ??= setTimeout(() => void this.flushPersonal(), PERSONAL_BATCH_MS);
   }
@@ -425,7 +472,7 @@ export class App {
     if (!/^\d{1,20}$/.test(userId)) return;
     const seen = this.looksSeen.get(userId);
     if (seen !== undefined && this.now() - seen < LOOKS_TTL_MS) return;
-    this.looksSeen.set(userId, this.now());
+    remember(this.looksSeen, userId, this.now());
     this.looksQueue.add(userId);
     this.looksTimer ??= setTimeout(() => void this.flushLooks(), LOOKS_BATCH_MS);
   }
@@ -541,23 +588,44 @@ export class App {
         if (!this.stopped) batch.forEach((m) => m.isConnected && this.process(m));
       });
     };
+    const add = (m: Element) => {
+      pending.add(m);
+      if (pending.size <= PENDING_MAX) return;
+      // A tab that can't flush (hidden, a frame never comes) must not keep every message the site
+      // already threw away: drop those first, then the oldest.
+      for (const old of pending) if (!old.isConnected) pending.delete(old);
+      for (const old of pending) {
+        if (pending.size <= PENDING_MAX) break;
+        pending.delete(old);
+      }
+    };
+    const schedule = () => {
+      if (!pending.size || scheduled) return;
+      scheduled = true;
+      // After the page script's own observer has tagged the new messages.
+      later(this.doc, flush);
+    };
+    // Hidden after a frame was asked for: that frame won't come until the tab is shown again.
+    const visibility = () => {
+      if (this.stopped || !this.doc.hidden || !pending.size) return;
+      setTimeout(flush, 16);
+    };
+    this.doc.addEventListener('visibilitychange', visibility);
+    this.pendingSize = () => pending.size;
+    this.unwatchVisibility = () => this.doc.removeEventListener('visibilitychange', visibility);
     this.observer = new MutationObserver((records) => {
       for (const r of records) {
         if (r.type === 'attributes') {
           // The page script tagged a sender, or the channel changed.
-          if (r.target instanceof Element && r.attributeName === 'data-cyextv-uid') pending.add(r.target);
+          if (r.target instanceof Element && r.attributeName === 'data-cyextv-uid') add(r.target);
           if (r.attributeName === 'data-cyextv-channel' || r.attributeName === 'data-cyextv-others') this.restart();
           continue;
         }
         r.addedNodes.forEach((n) => {
-          if (n instanceof Element) this.deps.site.messages(n).forEach((m) => pending.add(m));
+          if (n instanceof Element) this.deps.site.messages(n).forEach(add);
         });
       }
-      if (pending.size && !scheduled) {
-        scheduled = true;
-        // After the page script's own observer has tagged the new messages.
-        requestAnimationFrame(flush);
-      }
+      schedule();
     });
     this.observer.observe(this.doc.documentElement, {
       childList: true,
@@ -568,10 +636,17 @@ export class App {
     this.deps.site.messages(this.doc).forEach((m) => {
       // Already on the page: no real arrival time (a restart keeps the one it has).
       if (!arrived.has(m)) arrived.set(m, 0);
-      pending.add(m);
+      add(m);
     });
     scheduled = true;
-    requestAnimationFrame(flush);
+    later(this.doc, flush);
+  }
+
+  private unwatchVisibility: (() => void) | null = null;
+  private pendingSize: () => number = () => 0;
+  /** Messages waiting for the next flush. */
+  queued(): number {
+    return this.pendingSize();
   }
 
   private restarting = false;
@@ -583,7 +658,8 @@ export class App {
       if (this.stopped) return;
       this.channel = null;
       this.startFeatures();
-      await this.loadGlobals();
+      // Providers load on their own; the channel (and so chat) doesn't wait for them.
+      void this.loadGlobals();
       if (!this.stopped) await this.syncChannel();
       this.restarting = false;
     });
@@ -643,6 +719,8 @@ export class App {
     this.doc.querySelectorAll<HTMLElement>('[data-cyextv-paint]').forEach((n) => this.clearPaint(n));
     this.live?.stop();
     this.observer?.disconnect();
+    this.unwatchVisibility?.();
+    this.unwatchVisibility = null;
     if (this.badgeTimer) clearInterval(this.badgeTimer);
     // Nothing is left frozen by a stopped App.
     this.focusListeners?.();
@@ -665,6 +743,19 @@ export function textOf(body: Element): string {
   };
   walk(body);
   return out.replace(/\s+/g, ' ').trim();
+}
+
+/** Notes when `id` was asked about, keeping at most SEEN_MAX entries (the oldest go first). */
+export function remember(seen: Map<string, number>, id: string, at: number) {
+  seen.delete(id);
+  seen.set(id, at);
+  if (seen.size > SEEN_MAX) seen.delete(seen.keys().next().value as string);
+}
+
+/** Runs `fn` on the next frame, or soon when the tab is hidden (frames don't run there). */
+export function later(doc: Document, fn: () => void) {
+  if (doc.hidden || typeof requestAnimationFrame !== 'function') setTimeout(fn, 16);
+  else requestAnimationFrame(fn);
 }
 
 /** Runs one feature's hook; a feature that throws never stops chat. */

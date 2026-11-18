@@ -1,9 +1,11 @@
-// The popup: every setting, saved as soon as it changes (the content scripts pick it up).
+// The popup: every setting, saved as soon as it changes (the content scripts pick it up). It
+// follows changes made elsewhere (the settings page) and saves only what it changed itself.
 import { ext } from '../ext';
 import { HEALTH_MESSAGE } from '../health/check';
 import { INBOX_KEY, type Mention, readInbox } from '../features/highlights/inbox';
 import type { ProviderId } from '../providers/types';
-import { type Animations, MAX_CHANNELS, type Settings, load, trySave } from '../settings';
+import { type Animations, MAX_CHANNELS, STORAGE_KEY, type Settings, load } from '../settings';
+import { type Saver, createSaver } from '../ui/saver';
 import { ICON, el, icon, toggle } from '../ui/dom';
 import { useTheme } from '../ui/theme';
 import { toast } from '../ui/toast';
@@ -12,6 +14,7 @@ import { COSMETIC_LABEL, PROVIDER_LABEL, channelKey, channelUrl, mentionTime, on
 const $ = <T extends Element>(sel: string) => document.querySelector<T>(sel)!;
 
 let settings: Settings;
+let saver: Saver;
 let here: string | null = null;
 let tabId: number | undefined;
 let onSite = false;
@@ -20,21 +23,13 @@ let mentions: Mention[] = [];
 const SHOWN_MENTIONS = 5;
 
 async function update(next: Settings) {
-  const previous = settings;
-  if (next === previous) {
+  if (next === settings) {
     // A change that was refused (the list of switched-off channels is full).
     if (settings.disabledChannels.length >= MAX_CHANNELS) toast(`The extension is already off in ${MAX_CHANNELS} channels. Switch one back on first.`);
     return render();
   }
-  settings = next;
-  render();
-  // Too big or refused by the browser: back to what it was, in the popup and in storage.
-  const saved = await trySave(ext().storage.sync, settings);
-  if (saved.ok) return;
-  settings = previous;
-  render();
-  await trySave(ext().storage.sync, previous);
-  toast(saved.message);
+  // Shown at once; saved onto what is stored now. Refused: the popup shows what is stored and says why.
+  await saver.update(next);
 }
 
 function render() {
@@ -103,6 +98,20 @@ function render() {
 
 async function main() {
   settings = await load(ext().storage.sync);
+  saver = createSaver({
+    area: ext().storage.sync,
+    initial: settings,
+    show: (s) => {
+      settings = s;
+      useTheme(document, s.theme);
+      render();
+    },
+    fail: (message) => toast(message),
+  });
+  // The settings page (or another window) changed something: show it, never write it back stale.
+  ext().storage.onChanged.addListener((changes, area) => {
+    if (area === 'sync' && STORAGE_KEY in changes) saver.stored(changes[STORAGE_KEY]?.newValue);
+  });
   useTheme(document, settings.theme);
   try {
     const [tab] = await ext().tabs.query({ active: true, currentWindow: true });

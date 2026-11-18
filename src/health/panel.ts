@@ -45,11 +45,12 @@ li:hover { background: var(--hover); }
 .st { flex: none; text-align: right; font-size: .8rem; color: var(--dim); white-space: nowrap; }
 .st.ok { color: var(--accent-text); font-weight: 700; }
 .empty { margin: 0; padding: 18px 14px; color: var(--dim); text-align: center; }
-footer { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--border); flex: none; }
-.btn { height: 30px; padding: 0 12px; border: 1px solid var(--strong); border-radius: 3px; background: var(--surface); font-weight: 600; font-size: .8rem; cursor: pointer; }
+footer { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 10px 14px; border-top: 1px solid var(--border); flex: none; }
+.btn { height: 30px; padding: 0 12px; white-space: nowrap; border: 1px solid var(--strong); border-radius: 3px; background: var(--surface); font-weight: 600; font-size: .8rem; cursor: pointer; }
 .btn:hover { background: var(--hover); }
 .btn.go { color: var(--accent-text); }
-.fine { flex: 1; text-align: right; color: var(--dim); font-size: .72rem; }
+/* One line of its own when the buttons leave no room (a narrow panel): never three. */
+.fine { flex: 1 0 auto; text-align: right; white-space: nowrap; color: var(--dim); font-size: .72rem; }
 @media (prefers-reduced-motion: no-preference) { .btn, .x, .seg button { transition: background-color .12s, color .12s; } }
 `;
 
