@@ -18,9 +18,13 @@ export function readInbox(stored: unknown): Mention[] {
   return Array.isArray(stored) ? stored.filter(isMention).slice(0, INBOX_MAX) : [];
 }
 
-/** New ones (oldest first, as they came) on top of the list, capped. */
+/** What makes a mention the same one again: where, who, when it arrived and what it said. */
+export const mentionKey = (m: Mention) => `${m.platform}:${m.channel}:${m.login}:${m.at}:${m.text.slice(0, 500)}`;
+
+/** New ones (oldest first, as they came) on top of the list, capped; one already in the list is not added again. */
 export function addToInbox(list: Mention[], fresh: Mention[]): Mention[] {
-  const trimmed = fresh.map((m) => ({ ...m, text: m.text.slice(0, 500) }));
+  const known = new Set(list.map(mentionKey));
+  const trimmed = fresh.filter((m) => !known.has(mentionKey(m)) && known.add(mentionKey(m))).map((m) => ({ ...m, text: m.text.slice(0, 500) }));
   return [...trimmed.reverse(), ...list].slice(0, INBOX_MAX);
 }
 

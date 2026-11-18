@@ -14,6 +14,12 @@ const CSS = `
 .cyextv-word { background: color-mix(in srgb, var(--cyextv-hl) 38%, transparent); color: inherit; border-radius: 2px; }
 `;
 
+/**
+ * Messages already sent to the inbox. A settings change starts the app over and every line on the
+ * page is judged again; a mention that was listed once stays listed once.
+ */
+const inboxed = new WeakSet<Element>();
+
 /** One text node that was split into plain and marked pieces: the original goes back on stop. */
 type Split = { original: Text; pieces: Node[] };
 
@@ -67,7 +73,8 @@ export function highlights(): Feature {
       if (v.sound && ctx.now() - startedAt >= CHIME_WARMUP_MS) chime?.play();
       // Only live mentions, not the backlog already on the page at load.
       const channel = ctx.channel();
-      if (v.kind === 'mention' && inbox && info.at > 0 && info.login && channel) {
+      if (v.kind === 'mention' && inbox && info.at > 0 && info.login && channel && !inboxed.has(message)) {
+        inboxed.add(message);
         inbox.add({ platform: channel.platform, channel: channel.login, login: info.login, text: info.text, at: info.at });
       }
     },

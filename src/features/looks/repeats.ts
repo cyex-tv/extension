@@ -35,6 +35,12 @@ export function repeatKey(text: string, isEmote: (word: string) => boolean = () 
   return `t:${norm.join(' ')}`;
 }
 
+/**
+ * Lines already judged by an earlier run. A settings change starts the app over and every line on
+ * the page comes through again; counting them a second time would fold old lines into new groups.
+ */
+const judged = new WeakSet<Element>();
+
 type Group = { key: string; anchor: Element; count: number; last: number; chatters: Set<string>; members: Element[]; counter: HTMLElement | null };
 
 export function repeats(): Feature {
@@ -46,10 +52,13 @@ export function repeats(): Feature {
   let observer: MutationObserver | null = null;
   let watched: Element | null = null;
 
-  /** The group is over; its repeats stay folded and its counter stays. */
+  /**
+   * The group stops growing (its time is up); its repeats stay folded and its counter stays. The
+   * anchor keeps pointing at it (a WeakMap, gone with the line), so deleting or removing the line
+   * later still lets its copies show again.
+   */
   const forget = (g: Group) => {
     if (groups.get(g.key) === g) groups.delete(g.key);
-    byAnchor.delete(g.anchor);
   };
 
   /** The group is undone: its repeats show again and the counter goes. */
@@ -57,7 +66,9 @@ export function repeats(): Feature {
     for (const m of g.members) m.removeAttribute(ATTR);
     g.counter?.remove();
     g.counter = null;
+    g.members = [];
     forget(g);
+    byAnchor.delete(g.anchor);
   };
 
   // The first message of a group was deleted: its repeats show again, nobody is left behind a hidden line.
@@ -76,7 +87,10 @@ export function repeats(): Feature {
   };
 
   const prune = (now: number) => {
-    for (const g of [...groups.values()]) if (now - g.last > REPEAT_WINDOW_MS || !g.anchor.isConnected) forget(g);
+    for (const g of [...groups.values()]) {
+      if (!g.anchor.isConnected) release(g);
+      else if (now - g.last > REPEAT_WINDOW_MS) forget(g);
+    }
   };
 
   const showCount = (g: Group) => {
@@ -108,6 +122,14 @@ export function repeats(): Feature {
       observer = new MutationObserver((records) => {
         watch();
         for (const r of records) {
+          // A line the site took out of the list: nothing stays hidden behind it.
+          r.removedNodes.forEach((n) => {
+            if (!(n instanceof Element)) return;
+            for (const m of n.matches(sel) ? [n] : n.querySelectorAll(sel)) {
+              const g = byAnchor.get(m);
+              if (g && !m.isConnected) release(g);
+            }
+          });
           const t = r.target instanceof Element ? r.target : r.target.parentElement;
           const m = t?.closest(sel);
           if (m) deletedAnchor(m);
@@ -118,6 +140,8 @@ export function repeats(): Feature {
     // After highlights, so a highlighted message is known; and only live messages (`at` 0 is the backlog).
     message(message, info) {
       if (!ctx || info.at === 0) return;
+      if (judged.has(message)) return;
+      judged.add(message);
       const who = info.login ?? info.sender;
       if (!who || (info.login && mine.has(info.login.toLowerCase()))) return;
       if (message.hasAttribute('data-cyextv-hl') || message.hasAttribute('data-cyextv-hidden') || ctx.site.deletedNotice(message)) return;
@@ -128,8 +152,10 @@ export function repeats(): Feature {
       const now = ctx.now();
       if (groups.size > 200) prune(now);
       let g = groups.get(key);
-      if (g && ctx.site.deletedNotice(g.anchor)) release(g);
-      if (g && (now - g.last > REPEAT_WINDOW_MS || !g.anchor.isConnected || ctx.site.deletedNotice(g.anchor))) {
+      if (g && (ctx.site.deletedNotice(g.anchor) || !g.anchor.isConnected)) {
+        release(g);
+        g = undefined;
+      } else if (g && now - g.last > REPEAT_WINDOW_MS) {
         forget(g);
         g = undefined;
       }

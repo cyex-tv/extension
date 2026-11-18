@@ -4,7 +4,7 @@
 import { ext } from '../ext';
 import { HIDDEN_EMOTES_KEY, HiddenEmotesStore } from '../features/cleanup/hide-emote';
 import { regexProblem } from '../features/highlights/match';
-import { NICK_MAX, NOTE_MAX, NotesStore } from '../features/people/notes';
+import { NICK_MAX, NOTES_KEY, NOTE_MAX, NotesStore, splitNoteKey } from '../features/people/notes';
 import { COSMETIC_LABEL, PROVIDER_LABEL, move, setCosmetics, setEmotes } from '../popup/model';
 import type { ProviderId } from '../providers/types';
 import { DEFAULTS, STORAGE_KEY, type Settings, load, merge } from '../settings';
@@ -62,6 +62,8 @@ function field(label: string, hint: string | undefined, control: Node): HTMLElem
 
 function textInput(value: string, placeholder: string, onsave: (v: string) => void, label: string): HTMLInputElement {
   const input = inputEl({ type: 'text', value, placeholder, className: 'input' });
+  // What was drawn, to tell typing that isn't saved yet from the field as drawn.
+  input.dataset.base = value;
   input.setAttribute('aria-label', label);
   input.addEventListener('change', () => onsave(input.value));
   input.addEventListener('keydown', (e) => {
@@ -183,17 +185,30 @@ function cosmetics(): HTMLElement {
   return panel;
 }
 
+const PLATFORM_NAME = { twitch: 'Twitch', kick: 'Kick' } as const;
+
 function notesItem(): HTMLElement {
   const all = Object.entries(notes.all()).sort(([a], [b]) => a.localeCompare(b));
   if (!all.length) return el('p', { className: 'hint block' }, 'None yet. Open someone’s user card in chat to add a nickname or a note.');
   const wrap = el('div', { className: 'rules' });
-  for (const [login, entry] of all) {
+  for (const [key, entry] of all) {
+    const who = splitNoteKey(key);
+    if (!who) continue;
+    const { platform, login } = who;
+    const name = `${login} on ${PLATFORM_NAME[platform]}`;
+    // Saved onto the entry as it is now, so a note added in chat meanwhile isn't undone by the other field.
+    const now = () => notes.get(platform, login) ?? { nick: '', note: '' };
     const row = el('div', { className: 'rule' });
-    const nick = textInput(entry.nick, 'Nickname', (v) => void notes.set(login, { ...entry, nick: v }), `Nickname for ${login}`);
+    const nick = textInput(entry.nick, 'Nickname', (v) => void notes.set(platform, login, { ...now(), nick: v }), `Nickname for ${name}`);
     nick.maxLength = NICK_MAX;
-    const note = textInput(entry.note, 'Note', (v) => void notes.set(login, { ...entry, note: v }), `Note for ${login}`);
+    const note = textInput(entry.note, 'Note', (v) => void notes.set(platform, login, { ...now(), note: v }), `Note for ${name}`);
     note.maxLength = NOTE_MAX;
-    row.append(el('span', { className: 'login' }, login), nick, note, removeButton(`Remove ${login}`, () => void notes.set(login, { nick: '', note: '' })));
+    row.append(
+      el('span', { className: 'login' }, login, el('span', { className: 'hint' }, PLATFORM_NAME[platform])),
+      nick,
+      note,
+      removeButton(`Remove ${name}`, () => void notes.set(platform, login, { nick: '', note: '' })),
+    );
     wrap.append(row);
   }
   return wrap;
@@ -425,6 +440,11 @@ function revealNav() {
 
 function render() {
   const focused = (document.activeElement as HTMLElement | null)?.dataset?.fk;
+  // A text field with typing that isn't saved yet (it saves when it loses focus) is kept as it is:
+  // the rest of the page is redrawn around it, so a change from elsewhere never wipes what is typed.
+  const live = document.activeElement;
+  const typing = live instanceof HTMLInputElement && live.type === 'text' && !!live.closest('#page') && live.dataset.base !== undefined && live.value !== live.dataset.base ? live : null;
+  const caret = typing ? [typing.selectionStart, typing.selectionEnd] : null;
   document.querySelector('#nav')!.replaceChildren(...navNode());
   const main = document.querySelector('#page')!;
   if (query.trim()) {
@@ -440,7 +460,14 @@ function render() {
       ...current.sections.map((s) => sectionNode(current, s, s.items, false)),
     );
   }
-  if (focused) [...document.querySelectorAll<HTMLElement>('[data-fk]')].find((e) => e.dataset.fk === focused)?.focus();
+  if (typing) {
+    const fresh = [...document.querySelectorAll<HTMLInputElement>('#page [data-fk]')].find((e) => e.dataset.fk === typing.dataset.fk && e.getAttribute('aria-label') === typing.getAttribute('aria-label'));
+    if (fresh) {
+      fresh.replaceWith(typing);
+      typing.focus();
+      if (caret?.[0] != null && caret[1] != null) typing.setSelectionRange(caret[0], caret[1]);
+    }
+  } else if (focused) [...document.querySelectorAll<HTMLElement>('[data-fk]')].find((e) => e.dataset.fk === focused)?.focus();
   revealNav();
 }
 
@@ -482,6 +509,7 @@ async function main() {
   });
   // Another tab (or the popup) changed the settings: show them.
   ext().storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && NOTES_KEY in changes) notes.replace(changes[NOTES_KEY]?.newValue);
     if (area === 'local' && HIDDEN_EMOTES_KEY in changes) hidden.replace(changes[HIDDEN_EMOTES_KEY]?.newValue);
     if (area === 'sync' && STORAGE_KEY in changes) saver.stored(changes[STORAGE_KEY]?.newValue);
   });

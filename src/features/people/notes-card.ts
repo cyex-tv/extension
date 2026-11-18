@@ -1,7 +1,7 @@
 // Nickname and note fields on the site's user card. Drawn once per person shown, so typing is
 // never interrupted by chat; saved when a field loses focus or on Enter (in the nickname).
 import type { Feature, FeatureContext } from '../types';
-import { NICK_MAX, NOTE_MAX, type NotesStore, notes } from './notes';
+import { NICK_MAX, NOTE_MAX, type NotePlatform, type NotesStore, notes } from './notes';
 
 const ATTR = 'data-cyextv-usercard-notes';
 const BORDER = 'color-mix(in srgb, currentColor 15%, transparent)';
@@ -15,10 +15,10 @@ const CSS = `
 [${ATTR}] .cyextv-nc-hint{opacity:.6}
 `;
 
-export function buildNotes(doc: Document, login: string, store: NotesStore): HTMLElement {
-  const entry = store.get(login) ?? { nick: '', note: '' };
+export function buildNotes(doc: Document, platform: NotePlatform, login: string, store: NotesStore): HTMLElement {
+  const entry = store.get(platform, login) ?? { nick: '', note: '' };
   const wrap = doc.createElement('div');
-  wrap.setAttribute(ATTR, login);
+  wrap.setAttribute(ATTR, `${platform}:${login}`);
   const head = doc.createElement('div');
   head.className = 'cyextv-nc-head';
   head.textContent = 'Your notes';
@@ -40,7 +40,7 @@ export function buildNotes(doc: Document, login: string, store: NotesStore): HTM
   note.maxLength = NOTE_MAX;
   note.value = entry.note;
   note.placeholder = 'Only you see this';
-  const save = () => void store.set(login, { nick: nick.value, note: note.value });
+  const save = () => void store.set(platform, login, { nick: nick.value, note: note.value });
   nick.addEventListener('change', save);
   note.addEventListener('change', save);
   nick.addEventListener('keydown', (e) => {
@@ -68,10 +68,10 @@ export function usercardNotes(store: NotesStore = notes): Feature {
     const found = ctx.site.userCard(ctx.doc);
     if (!found) return;
     const existing = found.card.querySelector(`[${ATTR}]`);
-    if (existing?.getAttribute(ATTR) === found.login) return;
+    if (existing?.getAttribute(ATTR) === `${ctx.site.platform}:${found.login}`) return;
     existing?.remove();
     // Above the messages section when there is one (that one is redrawn at the end).
-    const el = buildNotes(ctx.doc, found.login, store);
+    const el = buildNotes(ctx.doc, ctx.site.platform, found.login, store);
     const messages = found.card.querySelector('[data-cyextv-usercard]');
     if (messages) messages.before(el);
     else found.card.append(el);
