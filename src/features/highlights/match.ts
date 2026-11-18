@@ -34,10 +34,12 @@ export const REGEX_TEXT_MAX = 200;
 const FROM_USER = new WeakSet<RegExp>();
 
 const UNBOUNDED = /^(?:[*+]|\{\d+,\d*\})/;
+/** Any repeat after a group, counted ones included: (.*a){20} is as slow as (.*a)+. */
+const REPEATED = /^(?:[*+]|\{\d+(?:,\d*)?\})/;
 
 /**
  * Why a regex pattern is refused, or null when it looks fine. A conservative check, not a proof:
- * it turns down a quantified group that holds a quantifier ((a+)+, (a*)*, (a+)*, (a+){2,}), a
+ * it turns down a repeated group that holds a quantifier ((a+)+, (a*)*, (a+)*, (.*a){20}), a
  * quantified group of alternatives that can start alike ((a|aa)+), and backreferences, which are
  * the shapes that make a browser's regex engine take seconds on a short line.
  */
@@ -70,7 +72,7 @@ export function regexProblem(pattern: string): string | null {
       const done = stack.pop()!;
       const rest = pattern.slice(i + 1);
       const unbounded = UNBOUNDED.test(rest);
-      if (unbounded && done.quant) return 'Nested repeats like (a+)+ can freeze chat. Rewrite the pattern without a repeat inside a repeat.';
+      if (REPEATED.test(rest) && done.quant) return 'Nested repeats like (a+)+ can freeze chat. Rewrite the pattern without a repeat inside a repeat.';
       if (unbounded && done.alts.length > 1) {
         const heads = done.alts.map((a) => a[0] ?? '');
         if (!done.plain || heads.some((h, k) => h === '' || heads.indexOf(h) !== k)) return 'A repeated choice like (a|aa)+ can freeze chat. Make the choices start with different letters.';

@@ -245,12 +245,12 @@ describe('the popup and the quota', () => {
 // --- 2. Regex ----------------------------------------------------------------------------------
 
 describe('regex rules that can freeze chat', () => {
-  it.each(['(a+)+$', '(x*)*', '(x+)*', '(a+){2,}', '((ab)+)+', '(?:a+)+b', '(a|aa)+$', '(\\w+\\s?)*$', '(a)\\1', '(?<n>a)\\k<n>'])('refuses %s', (p) => {
+  it.each(['(a+)+$', '(x*)*', '(x+)*', '(a+){2,}', '(.*a){20}', '(.*a){20}$', '(\w+x){3,5}', '((ab)+)+', '(?:a+)+b', '(a|aa)+$', '(\\w+\\s?)*$', '(a)\\1', '(?<n>a)\\k<n>'])('refuses %s', (p) => {
     expect(regexProblem(p), p).not.toBeNull();
     expect(compilePattern(p, { regex: true, wholeWord: false, matchCase: false })).toBeNull();
   });
 
-  it.each(['^hello', 'gg+', '(foo|bar)+', '(ab)?c', '[a-z]+\\d{2}', '\\bkek\\b', '(?<!x)y+', '(?=a)b', 'a{2,3}', '[(]a+[)]+', '\\(a+\\)+'])('allows %s', (p) => {
+  it.each(['^hello', 'gg+', '(foo|bar)+', '(ab)?c', '[a-z]+\\d{2}', '\\bkek\\b', '(?<!x)y+', '(?=a)b', 'a{2,3}', '(ab){3}', '(ab|cd){2}', '[(]a+[)]+', '\\(a+\\)+'])('allows %s', (p) => {
     expect(regexProblem(p), p).toBeNull();
     expect(compilePattern(p, { regex: true, wholeWord: false, matchCase: false })).not.toBeNull();
   });
