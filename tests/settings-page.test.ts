@@ -71,12 +71,12 @@ describe('reset this group', () => {
 describe('backup file', () => {
   it('holds only the changed settings and the notes, named by date', () => {
     const s = merge({ animations: 'off', chat: { hide: { bits: true } } });
-    const f = backupFile(s, { lumen_fox: { nick: 'Fox', note: '' } }, new Date(2026, 10, 17));
+    const f = backupFile(s, { 'twitch:lumen_fox': { nick: 'Fox', note: '' } }, new Date(2026, 10, 17));
     expect(f.name).toBe('cyextv-settings-2026-11-17.json');
     const data = JSON.parse(f.text);
     expect(data.app).toBe(BACKUP_APP);
     expect(data.settings).toEqual({ animations: 'off', chat: { hide: { bits: true } } });
-    expect(data.userNotes.lumen_fox.nick).toBe('Fox');
+    expect(data.userNotes['twitch:lumen_fox'].nick).toBe('Fox');
   });
 
   it('reads its own file back the same', () => {

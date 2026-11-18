@@ -203,8 +203,8 @@ describe('nicknames and notes', () => {
   it('reads stored notes safely', () => {
     expect(readNotes(null)).toEqual({});
     expect(readNotes({ Lumen_Fox: { nick: '  Fox  ', note: '' }, 'bad name': { nick: 'x' }, empty: { nick: '', note: ' ' }, n: { nick: 'a'.repeat(40), note: 'b'.repeat(900) } })).toEqual({
-      lumen_fox: { nick: 'Fox', note: '' },
-      n: { nick: 'a'.repeat(25), note: 'b'.repeat(500) },
+      'twitch:lumen_fox': { nick: 'Fox', note: '' },
+      'twitch:n': { nick: 'a'.repeat(25), note: 'b'.repeat(500) },
     });
   });
 
@@ -214,10 +214,10 @@ describe('nicknames and notes', () => {
     await store.load(area);
     const seen = vi.fn();
     store.subscribe(seen);
-    await store.set('Lumen_Fox', { nick: 'Fox', note: 'met at the meetup' });
-    expect(data[NOTES_KEY]).toEqual({ lumen_fox: { nick: 'Fox', note: 'met at the meetup' } });
-    expect(store.get('LUMEN_FOX')?.nick).toBe('Fox');
-    await store.set('lumen_fox', { nick: '', note: '' });
+    await store.set('twitch', 'Lumen_Fox', { nick: 'Fox', note: 'met at the meetup' });
+    expect(data[NOTES_KEY]).toEqual({ 'twitch:lumen_fox': { nick: 'Fox', note: 'met at the meetup' } });
+    expect(store.get('twitch', 'LUMEN_FOX')?.nick).toBe('Fox');
+    await store.set('twitch', 'lumen_fox', { nick: '', note: '' });
     expect(data[NOTES_KEY]).toEqual({});
     expect(seen).toHaveBeenCalledTimes(2);
   });
@@ -228,7 +228,7 @@ describe('nicknames and notes', () => {
     const f = nicknames(store);
     f.start!(ctx());
     const name = document.querySelector<HTMLElement>('.chat-author__display-name')!;
-    await store.set('lumen_fox', { nick: 'Fox', note: 'a note' });
+    await store.set('twitch', 'lumen_fox', { nick: 'Fox', note: 'a note' });
     expect(name.getAttribute('data-cyextv-nick')).toBe('Fox');
     expect(name.textContent).toBe('lumen_fox');
     expect(name.title).toBe('lumen_fox (your nickname: Fox)\na note');
@@ -266,8 +266,8 @@ describe('nicknames and notes', () => {
     const input = section[0]!.querySelector('input')!;
     input.value = 'Fox';
     input.dispatchEvent(new Event('change'));
-    await Promise.resolve();
-    expect((data[NOTES_KEY] as Record<string, { nick: string }>).lumen_fox!.nick).toBe('Fox');
+    for (let i = 0; i < 10; i++) await Promise.resolve();
+    expect((data[NOTES_KEY] as Record<string, { nick: string }>)['twitch:lumen_fox']!.nick).toBe('Fox');
     f.stop!();
     expect(document.querySelector('[data-cyextv-usercard-notes]')).toBeNull();
   });

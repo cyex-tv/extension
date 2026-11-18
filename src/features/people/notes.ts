@@ -6,11 +6,16 @@ import { BIDI_CONTROLS } from '../looks/clean';
 import type { Feature, FeatureContext } from '../types';
 
 export const NOTES_KEY = 'userNotes';
+/** Set once the notes are keyed by platform and login (older ones were by login alone). */
+export const NOTES_VERSION_KEY = 'userNotesVersion';
+export const NOTES_VERSION = 2;
 export const NOTES_MAX = 500;
 export const NICK_MAX = 25;
 export const NOTE_MAX = 500;
 
+export type NotePlatform = 'twitch' | 'kick';
 export type UserNote = { nick: string; note: string };
+/** Entries by `platform:login`: the same name on Twitch and on Kick is two people. */
 export type Notes = Record<string, UserNote>;
 
 // Not "__...": that keeps __proto__ out. Names Object.prototype owns are skipped too, so a stored
@@ -18,23 +23,62 @@ export type Notes = Record<string, UserNote>;
 const LOGIN = /^(?!__)[a-z0-9_]{1,25}$/;
 const RESERVED = new Set(['__proto__', 'constructor', 'prototype']);
 const validLogin = (key: string) => LOGIN.test(key) && !RESERVED.has(key);
+const isPlatform = (p: string): p is NotePlatform => p === 'twitch' || p === 'kick';
+
+/** The key of a chatter's entry; null when the login can't be one. */
+export function noteKey(platform: NotePlatform, login: string): string | null {
+  const l = login.toLowerCase();
+  return validLogin(l) ? `${platform}:${l}` : null;
+}
+
+/** Splits a key into platform and login (null for anything that isn't one). */
+export function splitNoteKey(key: string): { platform: NotePlatform; login: string } | null {
+  const i = key.indexOf(':');
+  if (i < 0) return null;
+  const platform = key.slice(0, i);
+  const login = key.slice(i + 1);
+  return isPlatform(platform) && validLogin(login) ? { platform, login } : null;
+}
 
 /** A notes object with no prototype, so a login can't collide with an inherited name. */
 const blank = (): Notes => Object.create(null) as Notes;
 
-/** Stored notes, checked: logins lower case, lengths capped, empty entries dropped. */
+/**
+ * Stored notes, checked: keys `platform:login` with the login lower case, lengths capped, empty
+ * entries dropped. A key without a platform is from before notes were kept per platform (or from
+ * an old backup): it was a Twitch name, so it becomes `twitch:`; an entry already under
+ * `twitch:` wins over it.
+ */
 export function readNotes(stored: unknown): Notes {
   const out = blank();
   if (typeof stored !== 'object' || stored === null || Array.isArray(stored)) return out;
-  for (const [login, v] of Object.entries(stored as Record<string, unknown>)) {
+  const entries = Object.entries(stored as Record<string, unknown>);
+  // Keys with a platform first, so a legacy one never takes the place of a real one.
+  entries.sort(([a], [b]) => Number(b.includes(':')) - Number(a.includes(':')));
+  for (const [raw, v] of entries) {
     if (Object.keys(out).length >= NOTES_MAX) break;
-    const key = login.toLowerCase();
-    if (!validLogin(key) || typeof v !== 'object' || v === null) continue;
+    const lower = raw.toLowerCase();
+    const parts = lower.includes(':') ? splitNoteKey(lower) : validLogin(lower) ? { platform: 'twitch' as const, login: lower } : null;
+    if (!parts || typeof v !== 'object' || v === null) continue;
+    const key = `${parts.platform}:${parts.login}`;
+    if (Object.hasOwn(out, key)) continue;
     const o = v as Record<string, unknown>;
     const entry = clean({ nick: typeof o.nick === 'string' ? o.nick : '', note: typeof o.note === 'string' ? o.note : '' });
     if (entry) out[key] = entry;
   }
   return out;
+}
+
+/**
+ * Once: moves notes kept by login alone to `twitch:login` (they could only ever have been
+ * written from Twitch chat plus the settings page, which showed no platform). Safe to run in every
+ * tab at once: it is the same result each time, and it only runs while the version is old.
+ */
+export async function migrateNotes(local: ExtStorageArea): Promise<void> {
+  const got = await local.get([NOTES_KEY, NOTES_VERSION_KEY]);
+  if (typeof got[NOTES_VERSION_KEY] === 'number' && (got[NOTES_VERSION_KEY] as number) >= NOTES_VERSION) return;
+  const stored = got[NOTES_KEY];
+  await local.set(stored === undefined ? { [NOTES_VERSION_KEY]: NOTES_VERSION } : { [NOTES_KEY]: readNotes(stored), [NOTES_VERSION_KEY]: NOTES_VERSION });
 }
 
 function clean(n: UserNote): UserNote | null {
@@ -48,11 +92,14 @@ export class NotesStore {
   private notes: Notes = blank();
   private listeners = new Set<() => void>();
   private local: ExtStorageArea | null = null;
+  /** Changes are written one after the other, each onto what storage holds when its turn comes. */
+  private queue: Promise<void> = Promise.resolve();
 
   async load(local: ExtStorageArea | null): Promise<void> {
     this.local = local;
     if (!local) return;
     try {
+      await migrateNotes(local);
       this.replace((await local.get(NOTES_KEY))[NOTES_KEY]);
     } catch {
       /* no storage: no notes */
@@ -65,9 +112,9 @@ export class NotesStore {
     for (const l of this.listeners) l();
   }
 
-  get(login: string): UserNote | null {
-    const key = login.toLowerCase();
-    return validLogin(key) && Object.hasOwn(this.notes, key) ? this.notes[key]! : null;
+  get(platform: NotePlatform, login: string): UserNote | null {
+    const key = noteKey(platform, login);
+    return key && Object.hasOwn(this.notes, key) ? this.notes[key]! : null;
   }
 
   all(): Notes {
@@ -75,24 +122,38 @@ export class NotesStore {
   }
 
   /** Sets or (with both empty) removes a chatter's entry, and saves. */
-  async set(login: string, note: UserNote): Promise<void> {
-    const key = login.toLowerCase();
-    if (!validLogin(key)) return;
+  set(platform: NotePlatform, login: string, note: UserNote): Promise<void> {
+    const key = noteKey(platform, login);
+    if (!key) return Promise.resolve();
     const entry = clean(note);
-    const next = Object.assign(blank(), this.notes);
-    if (entry) next[key] = entry;
-    else delete next[key];
-    if (entry && Object.keys(next).length > NOTES_MAX) return;
-    this.notes = next;
-    for (const l of this.listeners) l();
-    await this.local?.set({ [NOTES_KEY]: next }).catch(() => {});
+    const run = async () => {
+      // Onto what is stored now: notes added in chat (or the settings page) since this copy was
+      // loaded stay, whichever page saves.
+      let base = this.notes;
+      if (this.local) {
+        try {
+          base = readNotes((await this.local.get(NOTES_KEY))[NOTES_KEY]);
+        } catch {
+          /* keep the loaded copy */
+        }
+      }
+      const next = Object.assign(blank(), base);
+      if (entry) next[key] = entry;
+      else delete next[key];
+      if (entry && Object.keys(next).length > NOTES_MAX) return;
+      this.notes = next;
+      for (const l of this.listeners) l();
+      await this.local?.set({ [NOTES_KEY]: next, [NOTES_VERSION_KEY]: NOTES_VERSION }).catch(() => {});
+    };
+    this.queue = this.queue.then(run, run);
+    return this.queue;
   }
 
   /** Replaces every entry (an imported backup), and saves. */
   async setAll(all: Notes): Promise<void> {
     this.notes = readNotes(all);
     for (const l of this.listeners) l();
-    await this.local?.set({ [NOTES_KEY]: this.notes }).catch(() => {});
+    await this.local?.set({ [NOTES_KEY]: this.notes, [NOTES_VERSION_KEY]: NOTES_VERSION }).catch(() => {});
   }
 
   subscribe(fn: () => void): () => void {
@@ -152,7 +213,7 @@ export function nicknames(store: NotesStore = notes): Feature {
   };
   const apply = (message: Element, login: string) => {
     const name = ctx?.site.nameElement(message);
-    const entry = store.get(login);
+    const entry = ctx ? store.get(ctx.site.platform, login) : null;
     if (name && (entry || name.hasAttribute(NICK_ATTR) || name.hasAttribute(TITLED))) applyNick(name, entry);
   };
 

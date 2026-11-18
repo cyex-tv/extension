@@ -59,6 +59,8 @@ export type SaverOptions = {
   /** Say why a change wasn't saved. */
   fail(message: string): void;
   now?: () => number;
+  /** Where "the page is going away" is heard (the page's own document by default). */
+  doc?: Document;
 };
 
 export function createSaver(o: SaverOptions): Saver {
@@ -71,6 +73,8 @@ export function createSaver(o: SaverOptions): Saver {
   let timer: ReturnType<typeof setTimeout> | null = null;
   let busy = false;
   let lastWrite = -Infinity;
+  /** The page is hidden or closing: nothing waits for the fold window any more. */
+  let leaving = false;
 
   const view = () => [...writing, ...queued.map((q) => q.patch)].reduce<Settings>((s, p) => p(s), base);
   let shown = view();
@@ -113,11 +117,19 @@ export function createSaver(o: SaverOptions): Saver {
     if (queued.length) schedule();
   }
 
+  /** The popup closes within the fold window: write what is waiting now, not after the gap. */
+  function flush() {
+    leaving = true;
+    if (timer) clearTimeout(timer);
+    timer = null;
+    if (!busy && queued.length) void write();
+  }
+
   function schedule() {
     if (timer || busy) return;
     const wait = Math.max(0, lastWrite + SAVE_GAP_MS - now());
     // Quiet for a while: write at once. Otherwise fold what comes in the next moment into one write.
-    if (wait === 0) void write();
+    if (wait === 0 || leaving) void write();
     else timer = setTimeout(() => void write(), wait);
   }
 
@@ -136,6 +148,13 @@ export function createSaver(o: SaverOptions): Saver {
       schedule();
     });
   }
+
+  const doc = o.doc ?? (typeof document === 'undefined' ? undefined : document);
+  doc?.defaultView?.addEventListener('pagehide', flush);
+  doc?.addEventListener('visibilitychange', () => {
+    if (doc.visibilityState === 'hidden') flush();
+    else leaving = false;
+  });
 
   return {
     update: (next) => apply(patchFrom(shown, merge(next))),

@@ -67,7 +67,8 @@ export function search(pages: Page[], query: string): Hit[] {
 // The backup file: the settings (only what differs from the defaults) and, from this device, the
 // nicknames and notes and the hidden emotes. Nothing else from the browser goes in it.
 export const BACKUP_APP = 'cyex.tv extension';
-export const BACKUP_VERSION = 1;
+/** 2: notes are keyed `platform:login`. Version 1 files (keys by login alone, all Twitch) still read. */
+export const BACKUP_VERSION = 2;
 const BACKUP_MAX_BYTES = 256 * 1024;
 
 export function backupFile(settings: Settings, notes: Notes, now: Date, hidden: readonly HiddenEmote[] = []): { name: string; text: string } {

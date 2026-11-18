@@ -16,6 +16,9 @@ export function applyTheme(doc: Document, theme: Theme): void {
   else delete doc.documentElement.dataset.theme;
 }
 
+/** Documents that already follow the OS: each page registers its listener once, however often it calls `useTheme`. */
+const following = new WeakSet<Document>();
+
 /** Applies the theme now, mirrors it for the next load, and follows the OS while on "system". */
 export function useTheme(doc: Document, theme: Theme): void {
   applyTheme(doc, theme);
@@ -24,8 +27,11 @@ export function useTheme(doc: Document, theme: Theme): void {
   } catch {
     /* no localStorage: the page still gets the theme, just after loading */
   }
+  if (following.has(doc)) return;
   const mq = doc.defaultView?.matchMedia?.('(prefers-color-scheme: light)');
-  mq?.addEventListener?.('change', () => {
+  if (!mq?.addEventListener) return;
+  following.add(doc);
+  mq.addEventListener('change', () => {
     if (readMirror(doc) === 'system') applyTheme(doc, 'system');
   });
 }

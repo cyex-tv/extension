@@ -4,7 +4,8 @@
 import { ext } from '../ext';
 import { PROVIDER_LABEL } from '../popup/model';
 import type { ProviderId } from '../providers/types';
-import { type Settings, load, trySave } from '../settings';
+import { STORAGE_KEY, type Settings, load } from '../settings';
+import { type Saver, createSaver, patchFrom } from '../ui/saver';
 import { el, toggle, trackInputMethod } from '../ui/dom';
 import { useTheme } from '../ui/theme';
 import { toast } from '../ui/toast';
@@ -22,20 +23,22 @@ const PRESETS: { id: Preset; label: string; hint: string }[] = [
   { id: 'clean', label: 'Clean Twitch', hint: 'Hides the Prime, Bits and Ad-Free buttons, Stories, Viewers also watch, the leaderboard, gift banners, celebrations and the first-time chatter prompt.' },
 ];
 
+/** The settings as the page opened: what the choices are measured against. */
 let settings: Settings;
 let state: State;
+let saver: Saver;
 
 async function finish(skipped: boolean) {
   const target = skipped ? skip(state, settings) : next(state);
-  let applied = settings;
   if (!target.skipped) {
-    applied = apply(settings, target);
-    const saved = await trySave(ext().storage.sync, applied);
+    // Only what the choices changed, patched onto the settings stored now: synced settings that
+    // arrived (or were changed in the popup) after this page opened are never written over, and
+    // on a fresh machine whose sync hasn't delivered yet no default is written for a key left alone.
+    const saved = await saver.apply(patchFrom(settings, apply(settings, target)));
     // Nothing is marked done, so the page stays and can be tried again (or skipped).
     if (!saved.ok) return toast(`Your choices weren’t saved. ${saved.message}`);
   }
   state = target;
-  settings = applied;
   let remembered = true;
   try {
     await ext().storage.local.set({ [ONBOARDING_KEY]: { done: true, version: ONBOARDING_VERSION, at: Date.now() } });
@@ -148,6 +151,10 @@ function render() {
 async function main() {
   trackInputMethod(document);
   settings = await load(ext().storage.sync);
+  saver = createSaver({ area: ext().storage.sync, initial: settings, show: () => {}, fail: () => {} });
+  ext().storage.onChanged.addListener((changes, area) => {
+    if (area === 'sync' && STORAGE_KEY in changes) saver.stored(changes[STORAGE_KEY]?.newValue);
+  });
   useTheme(document, settings.theme);
   state = initial(settings);
   render();

@@ -169,7 +169,7 @@ describe('the page and the quota', () => {
     expect(saved.chat.highlights.map((r) => r.regex)).toEqual([false, false]);
     expect(document.querySelector('#toast')!.textContent).toContain(regexNotice(2));
     expect(regexNotice(2)).toBe('2 regex rules were imported switched off. Switch them on under Highlights or Ignores once you’ve checked them.');
-    expect(Object.keys(data.local[NOTES_KEY] as object)).toEqual(['lumen_fox']);
+    expect(Object.keys(data.local[NOTES_KEY] as object)).toEqual(['twitch:lumen_fox']);
     expect(data.local.hiddenEmotes).toHaveLength(1);
     expect(document.querySelector('#page')!.textContent).toContain('Replaces your settings, nicknames, notes and hidden emotes');
   });
@@ -341,19 +341,19 @@ describe('notes with names the prototype owns', () => {
   it('drops __proto__, constructor and prototype on read, and keeps the real ones', () => {
     const stored = JSON.parse('{"__proto__":{"nick":"x","note":""},"constructor":{"nick":"y","note":""},"prototype":{"nick":"z","note":""},"__other":{"nick":"q","note":""},"lumen_fox":{"nick":"Fox","note":""}}');
     const read = readNotes(stored);
-    expect(Object.keys(read)).toEqual(['lumen_fox']);
+    expect(Object.keys(read)).toEqual(['twitch:lumen_fox']);
     expect(Object.getPrototypeOf(read)).toBeNull();
   });
 
   it('get says null for them, even when the store was never given them', async () => {
     const store = new NotesStore();
-    await store.set('__proto__', { nick: 'Evil', note: 'x' });
-    await store.set('constructor', { nick: 'Evil', note: 'x' });
-    await store.set('prototype', { nick: 'Evil', note: 'x' });
-    expect(store.get('__proto__')).toBeNull();
-    expect(store.get('constructor')).toBeNull();
-    expect(store.get('toString')).toBeNull();
-    expect(store.get('hasOwnProperty')).toBeNull();
+    await store.set('twitch', '__proto__', { nick: 'Evil', note: 'x' });
+    await store.set('twitch', 'constructor', { nick: 'Evil', note: 'x' });
+    await store.set('twitch', 'prototype', { nick: 'Evil', note: 'x' });
+    expect(store.get('twitch', '__proto__')).toBeNull();
+    expect(store.get('twitch', 'constructor')).toBeNull();
+    expect(store.get('twitch', 'toString')).toBeNull();
+    expect(store.get('twitch', 'hasOwnProperty')).toBeNull();
     expect(Object.keys(store.all())).toEqual([]);
     expect(({} as Record<string, unknown>).nick).toBeUndefined();
   });
@@ -361,9 +361,9 @@ describe('notes with names the prototype owns', () => {
   it('keeps the other notes when an import carries a __proto__ entry', () => {
     const file = `{"app":"${BACKUP_APP}","version":1,"settings":{},"userNotes":{"__proto__":{"nick":"x","note":""},"nora_byte":{"nick":"Nora","note":"hi"}}}`;
     const r = readBackup(file);
-    expect(r.ok && Object.keys(r.notes!)).toEqual(['nora_byte']);
+    expect(r.ok && Object.keys(r.notes!)).toEqual(['twitch:nora_byte']);
     const out = JSON.parse(backupFile(DEFAULTS, readNotes(JSON.parse('{"__proto__":{"nick":"x","note":""},"a":{"nick":"A","note":""}}')), new Date()).text);
-    expect(Object.keys(out.userNotes)).toEqual(['a']);
+    expect(Object.keys(out.userNotes)).toEqual(['twitch:a']);
   });
 });
 
@@ -409,8 +409,8 @@ describe('direction overrides', () => {
 
   it('are stripped from nicknames and notes', async () => {
     const store = new NotesStore();
-    await store.set('lumen_fox', { nick: 'Fo‮x', note: 'a⁦b' });
-    expect(store.get('lumen_fox')).toEqual({ nick: 'Fox', note: 'ab' });
+    await store.set('twitch', 'lumen_fox', { nick: 'Fo‮x', note: 'a⁦b' });
+    expect(store.get('twitch', 'lumen_fox')).toEqual({ nick: 'Fox', note: 'ab' });
   });
 });
 
