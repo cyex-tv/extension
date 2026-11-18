@@ -1,6 +1,6 @@
 // The popup's changes to the settings, kept apart from the page so they can be tested.
 import type { ProviderId } from '../providers/types';
-import type { Animations, Settings } from '../settings';
+import { type Animations, MAX_CHANNELS, type Settings } from '../settings';
 import { loginFromPath } from '../sites/index';
 
 export const PROVIDER_LABEL: Record<ProviderId, string> = { cyextv: 'cyex.tv', '7tv': '7TV', bttv: 'BetterTTV', ffz: 'FrankerFaceZ' };
@@ -58,9 +58,10 @@ export function setAnimations(s: Settings, animations: Animations): Settings {
   return { ...s, animations };
 }
 
-/** Switches the extension on or off for one channel. */
+/** Switches the extension on or off for one channel. At the cap (`MAX_CHANNELS`) it can't switch another off. */
 export function setChannel(s: Settings, key: string, on: boolean): Settings {
   const rest = s.disabledChannels.filter((c) => c !== key);
+  if (!on && (s.disabledChannels.includes(key) || rest.length >= MAX_CHANNELS)) return s;
   return { ...s, disabledChannels: on ? rest : [...rest, key] };
 }
 

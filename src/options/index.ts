@@ -3,13 +3,15 @@
 // Enter. Each section can go back to its defaults, with an undo; About has the backup file.
 import { ext } from '../ext';
 import { HIDDEN_EMOTES_KEY, HiddenEmotesStore } from '../features/cleanup/hide-emote';
+import { regexProblem } from '../features/highlights/match';
 import { NICK_MAX, NOTE_MAX, NotesStore } from '../features/people/notes';
 import { COSMETIC_LABEL, PROVIDER_LABEL, move, setCosmetics, setEmotes } from '../popup/model';
 import type { ProviderId } from '../providers/types';
-import { DEFAULTS, type Settings, load, merge, save } from '../settings';
+import { DEFAULTS, type Settings, fits, load, merge, trySave } from '../settings';
 import { ICON, el, icon, input as inputEl, segmented, toggle } from '../ui/dom';
 import { useTheme } from '../ui/theme';
-import { backupFile, isDefault, readBackup, resetSection, search } from './model';
+import { toast } from '../ui/toast';
+import { type Imported, backupFile, isDefault, readBackup, regexNotice, resetSection, search } from './model';
 import { GROUPS, type Item, PAGES, type Page, type RuleField, type Section, getPath, setPath } from './schema';
 
 let settings: Settings;
@@ -18,15 +20,46 @@ let query = '';
 const notes = new NotesStore();
 const hidden = new HiddenEmotesStore();
 
-async function update(next: Settings) {
+/** A regex rule the page turned down, shown under its row until the next change. */
+let ruleError: { key: string; index: number; text: string } | null = null;
+
+/**
+ * Shows and saves the next settings. Too big for synced storage (or refused by the browser): the
+ * page and the stored copy stay as they were and a message says why. True when it saved.
+ */
+async function update(next: Settings): Promise<boolean> {
+  const previous = settings;
   // Through `merge`, so the page can only ever store what the content scripts accept.
-  settings = merge(next);
+  const merged = merge(next);
+  ruleError = null;
+  const size = fits(merged);
+  if (!size.ok) {
+    toast(size.message);
+    render();
+    return false;
+  }
+  settings = merged;
   useTheme(document, settings.theme);
   render();
-  await save(ext().storage.sync, settings);
+  const saved = await trySave(ext().storage.sync, merged);
+  if (saved.ok) return true;
+  // Roll back: what the page shows and what is stored.
+  settings = previous;
+  useTheme(document, settings.theme);
+  render();
+  await trySave(ext().storage.sync, previous);
+  toast(saved.message);
+  return false;
 }
 
 const set = (key: string, value: unknown) => update(setPath(settings, key, value));
+
+/** Adds an entry to a list setting; says so when the list is full or already has it. */
+function addTo(key: string, current: unknown[], entry: unknown, what: string) {
+  const grown = getPath(merge(setPath(settings, key, [...current, entry])), key) as unknown[];
+  if (grown.length <= current.length) return void toast(`Not added: the list of ${what} is full, or already has it.`);
+  void set(key, [...current, entry]);
+}
 
 // --- Small parts -------------------------------------------------------------------------------
 
@@ -58,24 +91,6 @@ function button(text: string, className: string, onclick: () => void): HTMLButto
   return b;
 }
 
-let toastTimer: ReturnType<typeof setTimeout> | null = null;
-/** A short note at the bottom, with an optional undo (cyex-app toast). */
-function toast(text: string, undo?: () => void) {
-  const box = document.querySelector<HTMLElement>('#toast')!;
-  const kids: Node[] = [el('span', {}, text)];
-  if (undo) {
-    kids.push(
-      button('Undo', 'link', () => {
-        box.replaceChildren();
-        undo();
-      }),
-    );
-  }
-  box.replaceChildren(...kids);
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => box.replaceChildren(), 6000);
-}
-
 // --- Items -------------------------------------------------------------------------------------
 
 function namesItem(item: Extract<Item, { kind: 'names' }>): HTMLElement {
@@ -91,7 +106,7 @@ function namesItem(item: Extract<Item, { kind: 'names' }>): HTMLElement {
     item.placeholder,
     (v) => {
       const value = item.raw ? v.trim().toLowerCase() : v;
-      if (value) void set(item.key, [...list, value]);
+      if (value) addTo(item.key, list, value, item.label.toLowerCase());
     },
     `Add to ${item.label}`,
   );
@@ -128,15 +143,29 @@ function rulesItem(item: Extract<Item, { kind: 'rules' }>): HTMLElement {
   rules.forEach((rule, i) => {
     const row = el('div', { className: 'rule' });
     for (const f of item.fields) {
-      row.append(ruleControl(f, rule, (v) => void set(item.key, rules.map((r, j) => (j === i ? { ...r, [f.key]: v } : r)))));
+      row.append(
+        ruleControl(f, rule, (v) => {
+          const changed = { ...rule, [f.key]: v };
+          // A regex that can freeze chat is turned down here (and ignored if it's stored anyway).
+          const problem = changed.regex === true && typeof changed.pattern === 'string' ? regexProblem(changed.pattern) : null;
+          if (problem) {
+            ruleError = { key: item.key, index: i, text: problem };
+            return render();
+          }
+          void set(item.key, rules.map((r, j) => (j === i ? changed : r)));
+        }),
+      );
     }
     row.append(removeButton('Remove rule', () => set(item.key, rules.filter((_, j) => j !== i))));
     wrap.append(row);
+    const stored = rule.regex === true && typeof rule.pattern === 'string' ? regexProblem(rule.pattern) : null;
+    const shown = ruleError?.key === item.key && ruleError.index === i ? ruleError.text : stored ? `Not used: ${stored}` : null;
+    if (shown) wrap.append(el('p', { className: 'field-error', role: 'alert' }, shown));
   });
   // A new rule needs its pattern first: the field adds it once something is typed.
   const first = item.fields[0]!;
   const add = el('div', { className: 'rule new' });
-  add.append(textInput('', `Add: ${first.placeholder ?? first.label}`, (v) => v.trim() && set(item.key, [...rules, { ...item.blank, [first.key]: v.trim() }]), `Add ${item.label}`));
+  add.append(textInput('', `Add: ${first.placeholder ?? first.label}`, (v) => v.trim() && addTo(item.key, rules, { ...item.blank, [first.key]: v.trim() }, item.label.toLowerCase()), `Add ${item.label}`));
   wrap.append(add);
   return wrap;
 }
@@ -220,7 +249,7 @@ function shortcutsItem(item: Extract<Item, { kind: 'shortcuts' }>): HTMLElement 
 let resetArmed: ReturnType<typeof setTimeout> | null = null;
 function backupItem(): HTMLElement {
   const exportButton = button('Export', 'btn', () => {
-    const file = backupFile(settings, notes.all(), new Date());
+    const file = backupFile(settings, notes.all(), new Date(), hidden.list());
     const url = URL.createObjectURL(new Blob([file.text], { type: 'application/json' }));
     const a = el('a', { href: url, download: file.name });
     document.body.append(a);
@@ -232,22 +261,47 @@ function backupItem(): HTMLElement {
   const picker = inputEl({ type: 'file' });
   picker.accept = 'application/json,.json';
   picker.hidden = true;
+  // The file is read when picked; replacing everything takes a second click (like Reset below).
+  let pending: Extract<Imported, { ok: true }> | null = null;
+  let importArmed: ReturnType<typeof setTimeout> | null = null;
+  const disarm = () => {
+    if (importArmed) clearTimeout(importArmed);
+    importArmed = null;
+    pending = null;
+    importButton.textContent = 'Import';
+  };
+  async function applyImport(result: Extract<Imported, { ok: true }>) {
+    const before = settings;
+    const beforeNotes = notes.all();
+    const beforeHidden = hidden.list();
+    // Settings first: when they don't save, nothing else is touched (no half import).
+    if (!(await update(result.settings))) return;
+    if (result.notes) await notes.setAll(result.notes);
+    if (result.hidden) await hidden.set(result.hidden);
+    toast(result.regexOff ? `Imported. ${regexNotice(result.regexOff)}` : 'Imported.', () => {
+      void notes.setAll(beforeNotes);
+      void hidden.set(beforeHidden);
+      void update(before);
+    });
+  }
   picker.addEventListener('change', async () => {
     const f = picker.files?.[0];
     if (!f) return;
     const result = readBackup(await f.text());
     picker.value = '';
     if (!result.ok) return toast(result.error);
-    const before = settings;
-    const beforeNotes = notes.all();
-    if (result.notes) await notes.setAll(result.notes);
-    await update(result.settings);
-    toast('Imported.', () => {
-      void notes.setAll(beforeNotes);
-      void update(before);
-    });
+    disarm();
+    pending = result;
+    importButton.textContent = 'Click again to replace';
+    importArmed = setTimeout(disarm, 8000);
+    toast('Ready to import. This replaces your settings, nicknames, notes and hidden emotes with the file’s. Click Import again to go on.');
   });
-  const importButton = button('Import', 'btn', () => picker.click());
+  const importButton = button('Import', 'btn', () => {
+    if (!pending) return picker.click();
+    const go = pending;
+    disarm();
+    void applyImport(go);
+  });
   const reset = button('Reset everything', 'btn danger', () => {
     if (!resetArmed) {
       reset.textContent = 'Click again to reset';
@@ -267,7 +321,7 @@ function backupItem(): HTMLElement {
     'div',
     { className: 'panel' },
     field('Export', 'Downloads a .json file.', exportButton),
-    field('Import', 'Replaces your settings with the file’s.', el('span', {}, importButton, picker)),
+    field('Import', 'Replaces your settings, nicknames, notes and hidden emotes with the file’s.', el('span', {}, importButton, picker)),
     field('Reset everything', 'Every setting back to its default. Nicknames and notes stay.', reset),
   );
 }
@@ -369,6 +423,14 @@ function navNode(): HTMLElement[] {
   });
 }
 
+/** In the narrow layout the page list scrolls sideways: keep the open page in view, whole. */
+function revealNav() {
+  const nav = document.querySelector<HTMLElement>('#nav')!;
+  const current = nav.querySelector<HTMLElement>('[aria-current="page"]');
+  if (!current || nav.scrollWidth <= nav.clientWidth) return;
+  nav.scrollLeft = Math.max(0, current.offsetLeft - nav.offsetLeft - (nav.clientWidth - current.offsetWidth) / 2);
+}
+
 function render() {
   const focused = (document.activeElement as HTMLElement | null)?.dataset?.fk;
   document.querySelector('#nav')!.replaceChildren(...navNode());
@@ -387,6 +449,7 @@ function render() {
     );
   }
   if (focused) [...document.querySelectorAll<HTMLElement>('[data-fk]')].find((e) => e.dataset.fk === focused)?.focus();
+  revealNav();
 }
 
 async function main() {
@@ -398,6 +461,10 @@ async function main() {
   hidden.subscribe(render);
   const fromHash = location.hash.slice(1);
   if (PAGES.some((p) => p.id === fromHash)) page = fromHash;
+  document.querySelector('.skip')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    document.querySelector<HTMLElement>('#page h1')?.focus();
+  });
   const box = document.querySelector<HTMLInputElement>('#search')!;
   box.addEventListener('input', () => {
     query = box.value;

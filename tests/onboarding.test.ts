@@ -24,13 +24,23 @@ describe('steps', () => {
     expect(back(back(back(s))).step).toBe('providers');
   });
 
-  it('skips from any step to the end, keeping the settings as they were', () => {
-    for (const start of [initial(DEFAULTS), next(initial(DEFAULTS))]) {
-      const changed = { ...start, choices: { ...start.choices, preset: 'clean' as const, timestamps: true } };
-      const s = skip(changed);
-      expect(s.step).toBe('done');
-      expect(apply(DEFAULTS, s)).toBe(DEFAULTS);
-    }
+  it('skips from the first step to the end, keeping the settings as they were', () => {
+    const start = initial(DEFAULTS);
+    const changed = { ...start, choices: { ...start.choices, emotes: { ...start.choices.emotes, ffz: false }, preset: 'clean' as const, timestamps: true } };
+    const s = skip(changed, DEFAULTS);
+    expect(s.step).toBe('done');
+    expect(apply(DEFAULTS, s)).toBe(DEFAULTS);
+  });
+
+  it('"Skip the rest" on the second step keeps the first step’s choices and drops its own', () => {
+    const start = next(initial(DEFAULTS));
+    const changed = { ...start, choices: { ...start.choices, emotes: { ...start.choices.emotes, ffz: false }, preset: 'clean' as const, timestamps: true } };
+    const s = skip(changed, DEFAULTS);
+    expect(s).toMatchObject({ step: 'done', skipped: false });
+    const out = apply(DEFAULTS, s);
+    expect(out.emotes.ffz).toBe(false);
+    expect(out.chat.hide.topPrime).toBe(false);
+    expect(out.chat.timestamps).toBe(false);
   });
 
   it('applies the choices on finish: providers, Clean Twitch, colours and timestamps', () => {
@@ -142,7 +152,7 @@ describe('the page', () => {
     await flush();
     expect(document.querySelector('h1')!.textContent).toBe('How should Twitch look?');
     expect(document.querySelector('[role="radiogroup"]')).not.toBeNull();
-    expect(buttons().map((b) => b.textContent)).toContain('Skip, use defaults');
+    expect(buttons().map((b) => b.textContent)).toContain('Skip the rest');
     const clean = document.querySelector<HTMLInputElement>('input[value="clean"]')!;
     clean.click();
     expect(clean.closest('.choice')!.classList.contains('on')).toBe(true);

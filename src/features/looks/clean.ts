@@ -7,8 +7,12 @@ import { textNodes } from '../../chat/render';
 import type { Feature, FeatureContext } from '../types';
 
 // Zero-width space, word joiner and invisible operators, BOM, soft hyphen, combining grapheme
-// joiner, Mongolian vowel separator, and the language tag / cancel tag on their own.
-const INVISIBLE = /[​⁠-⁤﻿­͏᠎]|\u{E0000}|\u{E0001}/gu;
+// joiner, Mongolian vowel separator, the language tag / cancel tag on their own, and the direction
+// embeddings, overrides and isolates (U+202A-202E, U+2066-2069): U+202E alone can turn a whole
+// line around. The plain direction marks (U+200E, U+200F) stay.
+const INVISIBLE = /[​⁠-⁤﻿­͏᠎‪-‮⁦-⁩]|\u{E0000}|\u{E0001}/gu;
+/** The direction embeddings, overrides and isolates alone (for names, nicknames and notes). */
+export const BIDI_CONTROLS = /[‪-‮⁦-⁩]/g;
 /** A ZWJ that doesn't join two emoji. */
 const LONE_ZWJ = /(?<![\p{Extended_Pictographic}\p{Emoji_Modifier}️])‍|‍(?!\p{Extended_Pictographic})/gu;
 /** Combining marks past the third on one letter. */
@@ -35,6 +39,16 @@ export function cleanMessages(): Feature {
       if (!body) return;
       const o = { invisible: ctx.settings.chat.cleanInvisible, zalgo: ctx.settings.chat.cleanZalgo };
       let changed = false;
+      // The name too: no direction override, and drawn as an island so it can't reorder the line.
+      const name = ctx.site.nameElement(message);
+      if (name && o.invisible) {
+        name.style.setProperty('unicode-bidi', 'isolate');
+        for (const node of textNodes(name, '')) {
+          const before = node.nodeValue ?? '';
+          const after = before.replace(BIDI_CONTROLS, '');
+          if (after !== before) node.nodeValue = after;
+        }
+      }
       for (const node of textNodes(body, ctx.site.skip)) {
         const before = node.nodeValue ?? '';
         const after = cleanText(before, o);

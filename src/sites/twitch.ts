@@ -34,7 +34,15 @@ export const TWITCH_HIDE_SELECTORS: Record<TwitchHide, HideSelectors> = {
     '.community-highlight-stack__card:has([data-test-selector*="poll"])',
   ],
   hypeChat: ['[data-test-selector="paid-pinned-chat-message-list"]', '.paid-pinned-chat-message-list', '[class*="paid-pinned-chat-message-list"]'],
-  leaderboard: ['[data-test-selector="channel-leaderboard"]', '.channel-leaderboard'],
+  // Live Twitch has a button "Expand Top Gifters Leaderboard" in the highlight stack, and entries
+  // with data-testid="leaderboard-top-three-entry"; the older channel-leaderboard names stay.
+  leaderboard: [
+    '[data-test-selector="channel-leaderboard"]',
+    '.channel-leaderboard',
+    'button[aria-label*="Leaderboard" i]',
+    '.community-highlight-stack__card:has(button[aria-label*="Leaderboard" i])',
+    '.community-highlight-stack__card:has([data-testid*="leaderboard"])',
+  ],
   giftBanners: ['[data-test-selector="gift-sub-banner"]', '.channel-root__gift-banner', '.community-highlight-stack__card[aria-label*="ift"]'],
   chatHeader: ['.stream-chat-header', '[class*="stream-chat-header"]'],
   welcome: ['[data-a-target="chat-welcome-message"]'],

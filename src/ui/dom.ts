@@ -57,3 +57,13 @@ export function segmented(label: string, options: [string, string][], value: str
   }
   return seg;
 }
+
+/**
+ * Notes on <html> whether the last input was the keyboard (`data-keys`), so a title focused by
+ * script can show its focus ring for keyboard users and not after a mouse click.
+ */
+export function trackInputMethod(doc: Document): void {
+  const root = doc.documentElement;
+  doc.addEventListener('keydown', () => root.setAttribute('data-keys', ''), true);
+  doc.addEventListener('pointerdown', () => root.removeAttribute('data-keys'), true);
+}
