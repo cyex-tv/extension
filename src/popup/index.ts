@@ -3,9 +3,10 @@ import { ext } from '../ext';
 import { HEALTH_MESSAGE } from '../health/check';
 import { INBOX_KEY, type Mention, readInbox } from '../features/highlights/inbox';
 import type { ProviderId } from '../providers/types';
-import { type Animations, type Settings, load, save } from '../settings';
+import { type Animations, MAX_CHANNELS, type Settings, load, trySave } from '../settings';
 import { ICON, el, icon, toggle } from '../ui/dom';
 import { useTheme } from '../ui/theme';
+import { toast } from '../ui/toast';
 import { COSMETIC_LABEL, PROVIDER_LABEL, channelKey, channelUrl, mentionTime, onSupportedSite, move, setAnimations, setChannel, setCosmetics, setEmotes } from './model';
 
 const $ = <T extends Element>(sel: string) => document.querySelector<T>(sel)!;
@@ -19,9 +20,21 @@ let mentions: Mention[] = [];
 const SHOWN_MENTIONS = 5;
 
 async function update(next: Settings) {
+  const previous = settings;
+  if (next === previous) {
+    // A change that was refused (the list of switched-off channels is full).
+    if (settings.disabledChannels.length >= MAX_CHANNELS) toast(`The extension is already off in ${MAX_CHANNELS} channels. Switch one back on first.`);
+    return render();
+  }
   settings = next;
   render();
-  await save(ext().storage.sync, settings);
+  // Too big or refused by the browser: back to what it was, in the popup and in storage.
+  const saved = await trySave(ext().storage.sync, settings);
+  if (saved.ok) return;
+  settings = previous;
+  render();
+  await trySave(ext().storage.sync, previous);
+  toast(saved.message);
 }
 
 function render() {

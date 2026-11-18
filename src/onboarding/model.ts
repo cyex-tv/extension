@@ -56,9 +56,14 @@ export function back(state: State): State {
   return { ...state, step: STEPS[Math.max(i - 1, 0)]! };
 }
 
-/** Skip from any step: straight to the end, choices dropped. */
-export function skip(state: State): State {
-  return { ...state, step: 'done', skipped: true };
+/**
+ * Skip. From the first step: straight to the end, choices dropped, the defaults stay. From the
+ * second ("Skip the rest"): the first step's choices are kept and this step's are dropped.
+ */
+export function skip(state: State, current: Settings): State {
+  if (state.step !== 'looks') return { ...state, step: 'done', skipped: true };
+  const was = initial(current).choices;
+  return { ...state, step: 'done', skipped: false, choices: { ...state.choices, preset: was.preset, readableColors: was.readableColors, timestamps: was.timestamps } };
 }
 
 /** The settings after the user's choices; skipped means unchanged. */

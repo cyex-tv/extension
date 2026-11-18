@@ -137,6 +137,10 @@ export type Settings = {
 /** Lists are capped so the settings stay inside synced storage's 8 KB per item. */
 export const MAX_RULES = 40;
 export const MAX_NAMES = 100;
+/** Channels the extension can be switched off in. */
+export const MAX_CHANNELS = 200;
+/** Synced storage keeps 8 KB per item (the key and the JSON of the value, in bytes). */
+export const SYNC_QUOTA_BYTES = 8192;
 
 function offAll<K extends string>(keys: readonly K[]): Record<K, boolean> {
   return Object.fromEntries(keys.map((k) => [k, false])) as Record<K, boolean>;
@@ -335,7 +339,7 @@ export function merge(stored: unknown): Settings {
     order: [...new Set([...order, ...DEFAULT_ORDER])],
     animations: s.animations === 'off' || s.animations === 'hover' ? s.animations : 'on',
     animateOnlyFocused: typeof s.animateOnlyFocused === 'boolean' ? s.animateOnlyFocused : DEFAULTS.animateOnlyFocused,
-    disabledChannels: Array.isArray(s.disabledChannels) ? s.disabledChannels.filter((c) => typeof c === 'string') : [],
+    disabledChannels: Array.isArray(s.disabledChannels) ? [...new Set(s.disabledChannels.filter((c): c is string => typeof c === 'string').map((c) => c.slice(0, 60)))].slice(0, MAX_CHANNELS) : [],
     tooltips: typeof s.tooltips === 'boolean' ? s.tooltips : DEFAULTS.tooltips,
     overrideOthers: typeof s.overrideOthers === 'boolean' ? s.overrideOthers : DEFAULTS.overrideOthers,
     theme: oneOf(s.theme, ['dark', 'light', 'system'] as const, DEFAULTS.theme),
@@ -369,6 +373,41 @@ function diff(value: unknown, base: unknown): unknown {
 
 export async function save(area: ExtStorageArea, settings: Settings): Promise<void> {
   await area.set({ [KEY]: compact(settings) });
+}
+
+/** What the settings take in synced storage, in bytes (the key plus the JSON of what is stored). */
+export function syncBytes(settings: Settings): number {
+  return new TextEncoder().encode(KEY + JSON.stringify(compact(settings))).length;
+}
+
+const kb = (bytes: number) => (Math.round(bytes / 102.4) / 10).toFixed(1).replace(/\.0$/, '');
+
+/** The human message for settings that don't fit synced storage. */
+export const tooBigMessage = (bytes: number) => `Too big to sync: ${kb(bytes)} KB of ${SYNC_QUOTA_BYTES / 1024} KB. Remove some rules or names.`;
+
+export type SaveResult = { ok: true } | { ok: false; message: string };
+
+/** Whether the settings fit synced storage; the message says by how much when they don't. */
+export function fits(settings: Settings): SaveResult {
+  const bytes = syncBytes(settings);
+  return bytes > SYNC_QUOTA_BYTES ? { ok: false, message: tooBigMessage(bytes) } : { ok: true };
+}
+
+/**
+ * `save` that never throws: too big (checked first, nothing written) or refused by the browser
+ * (quota, a broken profile) comes back as a message the page can show.
+ */
+export async function trySave(area: ExtStorageArea, settings: Settings): Promise<SaveResult> {
+  const size = fits(settings);
+  if (!size.ok) return size;
+  try {
+    await save(area, settings);
+    return { ok: true };
+  } catch (e) {
+    const text = e instanceof Error ? e.message : String(e);
+    if (/quota/i.test(text)) return { ok: false, message: tooBigMessage(syncBytes(settings)) };
+    return { ok: false, message: 'Couldn’t save your settings. Try again in a moment.' };
+  }
 }
 
 export const STORAGE_KEY = KEY;

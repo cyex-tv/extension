@@ -10,6 +10,7 @@
     <link rel="stylesheet" href="options.css" />
   </head>
   <body class="options">
+    <a class="skip" href="#page">Skip to settings</a>
     <header class="bar">
       <svg class="mark" viewBox="3 5 25 22" width="20" height="18" aria-hidden="true">
         <rect class="bar" x="3" y="5" width="15" height="6" />
@@ -24,7 +25,7 @@
         <input id="search" class="input search" type="search" placeholder="Search settings" aria-label="Search settings" autocomplete="off" spellcheck="false" />
         <nav id="nav" aria-label="Settings pages"></nav>
       </aside>
-      <main id="page"></main>
+      <main id="page" tabindex="-1"></main>
     </div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <footer class="fine">Saved as you change them, in your browser’s synced storage. Not affiliated with Twitch, Kick, 7TV, BetterTTV or FrankerFaceZ.</footer>

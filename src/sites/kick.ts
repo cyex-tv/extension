@@ -16,11 +16,24 @@ const OURS = ':not([data-cyextv])';
 export const KICK_HIDE_SELECTORS: Record<KickHide, HideSelectors> = {
   sidebar: ['#sidebar-wrapper', '[data-testid="sidebar"]', 'nav[data-sidebar]'],
   sidebarFollowing: ['[data-testid="sidebar-following"]', '#sidebar-wrapper [data-testid*="following"]', '#sidebar-wrapper [aria-label*="Following"]'],
-  sidebarRecommended: ['[data-testid="sidebar-recommended"]', '#sidebar-wrapper [data-testid*="recommended"]', '#sidebar-wrapper [aria-label*="ecommended"]'],
-  pinned: ['[data-testid="pinned-message"]', '[data-testid*="pinned-message"]', '#chatroom-top .pinned-message'],
-  predictions: ['[data-testid*="prediction"]', '[data-testid*="poll"]', '#chatroom-top [aria-label*="rediction"]'],
-  giftBanners: ['[data-testid*="gift-banner"]', '[data-testid*="sub-gift"]', '#chatroom-top [data-testid*="gift"]'],
-  leaderboard: ['[data-testid*="leaderboard"]', '#chatroom-top [aria-label*="eaderboard"]'],
+  // The entries are `sidebar-recommended-channel-N`; the section holding them (heading and "show
+  // more") goes too, unless it also holds the Following list (then only the entries go).
+  sidebarRecommended: [
+    '[data-testid="sidebar-recommended"]',
+    '#sidebar-wrapper [data-testid*="recommended"]',
+    '#sidebar-wrapper [aria-label*="ecommended"]',
+    '#sidebar-wrapper :is(section, div):has(> [data-testid^="sidebar-recommended-channel"]):not(:has([data-testid*="following"]))',
+  ],
+  pinned: ['[data-testid="pinned-message"]', '[data-testid*="pinned-message"]'],
+  predictions: ['[data-testid*="prediction"]', '[data-testid*="poll"]'],
+  giftBanners: ['[data-testid*="gift-banner"]', '[data-testid*="sub-gift"]'],
+  // Only inside the chat: the home page has a "Featured Leaderboards" section of its own.
+  leaderboard: [
+    '#channel-chatroom [data-testid*="leaderboard"]',
+    '[id^="chatroom"] [data-testid*="leaderboard"]',
+    '#channel-chatroom button[aria-label*="eaderboard" i]',
+    '[id^="chatroom"] button[aria-label*="eaderboard" i]',
+  ],
   emoteButton: [`#chat-emotes-btn${OURS}`, `[data-testid="emote-picker-button"]${OURS}`, `button[aria-label="Emotes"]${OURS}:not(.cyextv-em-btn)`],
   kicksButton: [`[data-testid*="kicks"]${OURS}`, `button[aria-label*="Kicks"]${OURS}`],
 };

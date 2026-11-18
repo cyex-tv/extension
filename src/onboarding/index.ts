@@ -4,9 +4,10 @@
 import { ext } from '../ext';
 import { PROVIDER_LABEL } from '../popup/model';
 import type { ProviderId } from '../providers/types';
-import { type Settings, load, save } from '../settings';
-import { el, toggle } from '../ui/dom';
+import { type Settings, load, trySave } from '../settings';
+import { el, toggle, trackInputMethod } from '../ui/dom';
 import { useTheme } from '../ui/theme';
+import { toast } from '../ui/toast';
 import { ONBOARDING_KEY, ONBOARDING_VERSION, type Preset, STEPS, type State, apply, back, initial, next, skip } from './model';
 
 const PROVIDER_HINT: Record<ProviderId, string> = {
@@ -25,13 +26,24 @@ let settings: Settings;
 let state: State;
 
 async function finish(skipped: boolean) {
-  state = skipped ? skip(state) : next(state);
-  if (!skipped) {
-    settings = apply(settings, state);
-    await save(ext().storage.sync, settings);
+  const target = skipped ? skip(state, settings) : next(state);
+  let applied = settings;
+  if (!target.skipped) {
+    applied = apply(settings, target);
+    const saved = await trySave(ext().storage.sync, applied);
+    // Nothing is marked done, so the page stays and can be tried again (or skipped).
+    if (!saved.ok) return toast(`Your choices weren’t saved. ${saved.message}`);
   }
-  await ext().storage.local.set({ [ONBOARDING_KEY]: { done: true, version: ONBOARDING_VERSION, at: Date.now() } });
+  state = target;
+  settings = applied;
+  let remembered = true;
+  try {
+    await ext().storage.local.set({ [ONBOARDING_KEY]: { done: true, version: ONBOARDING_VERSION, at: Date.now() } });
+  } catch {
+    remembered = false;
+  }
   render();
+  if (!remembered) toast('Saved, but the browser wouldn’t note that this page is done. It may open again.');
 }
 
 function button(text: string, className: string, onclick: () => void): HTMLButtonElement {
@@ -44,7 +56,8 @@ function actions(...kids: HTMLElement[]): HTMLElement {
   return el('div', { className: 'actions' }, ...kids);
 }
 
-const skipButton = () => button('Skip, use defaults', 'btn ghost', () => void finish(true));
+// First step: nothing was chosen yet that is kept. Second: the first step's choices are.
+const skipButton = (label: string) => button(label, 'btn quiet', () => void finish(true));
 
 function head(title: string, lead: string): HTMLElement[] {
   const i = STEPS.indexOf(state.step);
@@ -64,7 +77,7 @@ function providersStep(): HTMLElement[] {
   return [
     ...head('Which emotes should show?', 'All four are on. Switch off any you don’t want; you can change this later.'),
     panel,
-    actions(skipButton(), el('span', { className: 'grow' }), button('Next', 'btn primary', () => go(next(state)))),
+    actions(skipButton('Skip, use defaults'), el('span', { className: 'grow' }), button('Next', 'btn primary', () => go(next(state)))),
   ];
 }
 
@@ -93,13 +106,13 @@ function looksStep(): HTMLElement[] {
     group,
     el('h2', { className: 'label' }, 'Chat'),
     extras,
-    actions(button('Back', 'btn ghost', () => go(back(state))), skipButton(), el('span', { className: 'grow' }), button('Save and finish', 'btn primary', () => void finish(false))),
+    actions(button('Back', 'btn quiet', () => go(back(state))), skipButton('Skip the rest'), el('span', { className: 'grow' }), button('Save and finish', 'btn primary', () => void finish(false))),
   ];
 }
 
 function doneStep(): HTMLElement[] {
   const settingsButton = button('Open settings', 'btn primary', () => void ext().runtime.openOptionsPage());
-  const site = el('a', { className: 'btn ghost', href: 'https://cyex.tv', target: '_blank', rel: 'noreferrer' }, 'Go to cyex.tv');
+  const site = el('a', { className: 'btn quiet', href: 'https://cyex.tv', target: '_blank', rel: 'noreferrer' }, 'Go to cyex.tv');
   const tips = el(
     'ul',
     { className: 'tips' },
@@ -133,6 +146,7 @@ function render() {
 }
 
 async function main() {
+  trackInputMethod(document);
   settings = await load(ext().storage.sync);
   useTheme(document, settings.theme);
   state = initial(settings);

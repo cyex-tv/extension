@@ -84,6 +84,11 @@ export function checkHooks(site: Site, doc: Document): HookResult[] {
   });
 }
 
+const hasAncestorIn = (e: Element, set: ReadonlySet<Element>) => {
+  for (let p = e.parentElement; p; p = p.parentElement) if (set.has(p)) return true;
+  return false;
+};
+
 /** Every hide key's result: per selector, and the distinct elements all of them matched. */
 export function checkHide(site: Site, doc: Document): HideResult[] {
   const catalog: readonly HideOption[] = site.platform === 'kick' ? KICK_HIDE : TWITCH_HIDE;
@@ -100,7 +105,9 @@ export function checkHide(site: Site, doc: Document): HideResult[] {
       }
     });
     const m = meta.get(key);
-    return { key, label: m?.label ?? key, group: m?.group ?? 'Other', found: all.size > 0, count: all.size, selectors };
+    // Distinct elements, not nested ones: a card and the thing inside it that also matched count once.
+    const count = [...all].filter((e) => !hasAncestorIn(e, all)).length;
+    return { key, label: m?.label ?? key, group: m?.group ?? 'Other', found: all.size > 0, count, selectors };
   });
 }
 

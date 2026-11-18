@@ -2,6 +2,7 @@
 // (storage.local; the sites never see them). The nickname shows instead of their display name in
 // chat (their real name stays in the tooltip, with the note); both are edited on the site's user
 // card or on the settings page.
+import { BIDI_CONTROLS } from '../looks/clean';
 import type { Feature, FeatureContext } from '../types';
 
 export const NOTES_KEY = 'userNotes';
@@ -12,16 +13,23 @@ export const NOTE_MAX = 500;
 export type UserNote = { nick: string; note: string };
 export type Notes = Record<string, UserNote>;
 
-const LOGIN = /^[a-z0-9_]{1,25}$/;
+// Not "__...": that keeps __proto__ out. Names Object.prototype owns are skipped too, so a stored
+// or imported entry can never reach (or shadow) the prototype.
+const LOGIN = /^(?!__)[a-z0-9_]{1,25}$/;
+const RESERVED = new Set(['__proto__', 'constructor', 'prototype']);
+const validLogin = (key: string) => LOGIN.test(key) && !RESERVED.has(key);
+
+/** A notes object with no prototype, so a login can't collide with an inherited name. */
+const blank = (): Notes => Object.create(null) as Notes;
 
 /** Stored notes, checked: logins lower case, lengths capped, empty entries dropped. */
 export function readNotes(stored: unknown): Notes {
-  const out: Notes = {};
+  const out = blank();
   if (typeof stored !== 'object' || stored === null || Array.isArray(stored)) return out;
   for (const [login, v] of Object.entries(stored as Record<string, unknown>)) {
     if (Object.keys(out).length >= NOTES_MAX) break;
     const key = login.toLowerCase();
-    if (!LOGIN.test(key) || typeof v !== 'object' || v === null) continue;
+    if (!validLogin(key) || typeof v !== 'object' || v === null) continue;
     const o = v as Record<string, unknown>;
     const entry = clean({ nick: typeof o.nick === 'string' ? o.nick : '', note: typeof o.note === 'string' ? o.note : '' });
     if (entry) out[key] = entry;
@@ -30,14 +38,14 @@ export function readNotes(stored: unknown): Notes {
 }
 
 function clean(n: UserNote): UserNote | null {
-  const nick = n.nick.replace(/\s+/g, ' ').trim().slice(0, NICK_MAX);
-  const note = n.note.trim().slice(0, NOTE_MAX);
+  const nick = n.nick.replace(BIDI_CONTROLS, '').replace(/\s+/g, ' ').trim().slice(0, NICK_MAX);
+  const note = n.note.replace(BIDI_CONTROLS, '').trim().slice(0, NOTE_MAX);
   return nick || note ? { nick, note } : null;
 }
 
 /** The notes for this content script or page: loaded once, saved on change, listeners told. */
 export class NotesStore {
-  private notes: Notes = {};
+  private notes: Notes = blank();
   private listeners = new Set<() => void>();
   private local: ExtStorageArea | null = null;
 
@@ -58,19 +66,20 @@ export class NotesStore {
   }
 
   get(login: string): UserNote | null {
-    return this.notes[login.toLowerCase()] ?? null;
+    const key = login.toLowerCase();
+    return validLogin(key) && Object.hasOwn(this.notes, key) ? this.notes[key]! : null;
   }
 
   all(): Notes {
-    return { ...this.notes };
+    return Object.assign(blank(), this.notes);
   }
 
   /** Sets or (with both empty) removes a chatter's entry, and saves. */
   async set(login: string, note: UserNote): Promise<void> {
     const key = login.toLowerCase();
-    if (!LOGIN.test(key)) return;
+    if (!validLogin(key)) return;
     const entry = clean(note);
-    const next = { ...this.notes };
+    const next = Object.assign(blank(), this.notes);
     if (entry) next[key] = entry;
     else delete next[key];
     if (entry && Object.keys(next).length > NOTES_MAX) return;
@@ -98,7 +107,7 @@ export const notes = new NotesStore();
 const NICK_ATTR = 'data-cyextv-nick';
 // The name's own text is shrunk to nothing and the nickname drawn after it, so the site's text
 // node (which React owns) is never touched. Paints still apply: the pseudo-element is the name's.
-const CSS = `[${NICK_ATTR}]{font-size:0!important}[${NICK_ATTR}]::after{content:attr(${NICK_ATTR});font-size:var(--cyextv-nick-size,13px)}`;
+const CSS = `[${NICK_ATTR}]{font-size:0!important;unicode-bidi:isolate}[${NICK_ATTR}]::after{content:attr(${NICK_ATTR});font-size:var(--cyextv-nick-size,13px)}`;
 
 const TITLED = 'data-cyextv-titled';
 
