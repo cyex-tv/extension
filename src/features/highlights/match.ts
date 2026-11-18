@@ -55,21 +55,30 @@ function explain(message: string): string {
  * matching never backtracks, so (a+)+ or .*.*.*Z cost the same as a plain word.
  */
 export function regexProblem(pattern: string): string | null {
+  const r = compileRe2(pattern, 0);
+  return typeof r === 'string' ? r : null;
+}
+
+/**
+ * RE2's cost per character grows with the compiled program, so very large patterns (thousands of
+ * steps, from big counted repeats) are refused: under this, a 200-character line takes a few ms.
+ */
+export const REGEX_PROGRAM_MAX = 1000;
+
+function compileRe2(pattern: string, flags: number): RE2JS | string {
+  let re: RE2JS;
   try {
-    RE2JS.compile(pattern);
-    return null;
+    re = RE2JS.compile(pattern, flags);
   } catch (e) {
     return explain(e instanceof Error ? e.message : String(e));
   }
+  if (re.programSize() > REGEX_PROGRAM_MAX) return 'This pattern is too large. Use fewer or smaller counted repeats.';
+  return re;
 }
 
 function re2Matcher(pattern: string, matchCase: boolean): Matcher | null {
-  let re: RE2JS;
-  try {
-    re = RE2JS.compile(pattern, matchCase ? 0 : RE2JS.CASE_INSENSITIVE);
-  } catch {
-    return null;
-  }
+  const re = compileRe2(pattern, matchCase ? 0 : RE2JS.CASE_INSENSITIVE);
+  if (typeof re === 'string') return null;
   return {
     ranges(text) {
       const s = text.length > REGEX_TEXT_MAX ? text.slice(0, REGEX_TEXT_MAX) : text;

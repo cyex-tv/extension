@@ -133,9 +133,12 @@ describe('regex rules on RE2', () => {
       }
     }
     expect(slow).toEqual([]);
-    // Refused: lookarounds, JS-only [^], and nested counts past RE2's limit of 1000; everything else runs.
+    // Refused only for what RE2 can't run or for sheer size, each with its reason; everything else runs.
     const refusedNow = ATTACK.filter((p) => regexProblem(p));
-    expect(refusedNow.every((p) => /\(\?<?[=!]|\[\^\]|\{1,50\}\)\{1,50\}/.test(p)), refusedNow.join('  ')).toBe(true);
+    const reasons = refusedNow.map((p) => regexProblem(p)!);
+    expect(reasons.every((r) => /^(Lookarounds|Not a pattern|Counted repeats|This pattern is too large)/.test(r)), reasons.join(' | ')).toBe(true);
+    // The everyday ones from the findings still run.
+    for (const p of ['.*.*.*.*Z', String.raw`\s*\s*\s*$`, '^(?:a?){200}$', '(a+)+$', '(a|aa)+$']) expect(refusedNow).not.toContain(p);
     expect(refused).toBe(2 * refusedNow.length);
   });
 
@@ -163,6 +166,9 @@ describe('regex rules on RE2', () => {
     expect(regexProblem('a++')).toMatch(/repeat right after a repeat/);
     expect(regexProblem('a{1001}')).toMatch(/up to \{1000\}/);
     expect(regexProblem('(')).toMatch(/^Not a pattern regex rules understand/);
+    // Legal in RE2 but thousands of steps per character: too slow on a slow machine.
+    expect(regexProblem('(?:a?){999}(?:b?){999}(?:c?){999}Z')).toMatch(/too large/);
+    expect(regexProblem('(?:a?){200}a{200}')).toBeNull();
     expect(regexProblem('(a+)+$')).toBeNull();
   });
 
