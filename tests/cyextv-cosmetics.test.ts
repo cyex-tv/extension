@@ -99,13 +99,19 @@ describe('paintCss', () => {
 
   it('draws an image paint with the picture, clipped to the text by the caller', () => {
     const paint: CyexPaint = { ...linear(), kind: 'image', stops: [], image: { url: 'https://cdn.cyex.tv/p/1x.webp', still: 'https://cdn.cyex.tv/p/1x_static.webp' } };
-    expect(paintCss(paint, { animated: true })).toEqual({ backgroundImage: 'url("https://cdn.cyex.tv/p/1x.webp")', backgroundSize: 'cover', backgroundRepeat: 'no-repeat', filter: '' });
-    expect(paintCss({ ...paint, repeat: true }, { animated: true })).toMatchObject({ backgroundSize: 'auto 100%', backgroundRepeat: 'repeat' });
+    // a flat layer in the text colour under the picture: a picture that fails or has see-through parts leaves a readable name
+    expect(paintCss(paint, { animated: true })).toEqual({
+      backgroundImage: 'url("https://cdn.cyex.tv/p/1x.webp"), linear-gradient(currentColor, currentColor)',
+      backgroundSize: 'cover, 100% 100%',
+      backgroundRepeat: 'no-repeat, no-repeat',
+      filter: '',
+    });
+    expect(paintCss({ ...paint, repeat: true }, { animated: true })).toMatchObject({ backgroundSize: 'auto 100%, 100% 100%', backgroundRepeat: 'repeat, no-repeat' });
   });
 
   it('uses the still frame when animations are off', () => {
     const paint: CyexPaint = { ...linear(), kind: 'image', stops: [], image: { url: 'https://cdn.cyex.tv/p/1x.webp', still: 'https://cdn.cyex.tv/p/1x_static.webp' } };
-    expect(paintCss(paint, { animated: false })!.backgroundImage).toBe('url("https://cdn.cyex.tv/p/1x_static.webp")');
+    expect(paintCss(paint, { animated: false })!.backgroundImage).toBe('url("https://cdn.cyex.tv/p/1x_static.webp"), linear-gradient(currentColor, currentColor)');
     // Without a still the moving picture is all there is.
     expect(paintCss({ ...paint, image: { url: 'https://cdn.cyex.tv/p/1x.webp' } }, { animated: false })!.backgroundImage).toContain('1x.webp');
   });
