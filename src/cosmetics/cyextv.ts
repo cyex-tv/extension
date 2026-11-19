@@ -178,10 +178,14 @@ export function paintCss(paint: CyexPaint, opts: { animated: boolean }): PaintCs
     const raw = (!opts.animated && paint.image?.still) || paint.image?.url;
     const url = raw && /^https:\/\/[A-Za-z0-9.-]+\/[A-Za-z0-9/_.-]+$/.test(raw) ? raw : null;
     if (!url) return plain();
+    // A flat layer in the text colour under the picture (as cyex.tv draws it): a picture that
+    // doesn't load, or has see-through parts, still leaves the name readable instead of invisible.
+    // The caller keeps `color` and hides the text with -webkit-text-fill-color, so currentColor
+    // is the paint's colour or the chatter's own.
     return {
-      backgroundImage: `url("${url}")`,
-      backgroundSize: paint.repeat ? 'auto 100%' : 'cover',
-      backgroundRepeat: paint.repeat ? 'repeat' : 'no-repeat',
+      backgroundImage: `url("${url}"), linear-gradient(currentColor, currentColor)`,
+      backgroundSize: `${paint.repeat ? 'auto 100%' : 'cover'}, 100% 100%`,
+      backgroundRepeat: `${paint.repeat ? 'repeat' : 'no-repeat'}, no-repeat`,
       filter,
       ...(color ? { color } : {}),
     };

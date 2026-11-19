@@ -35,7 +35,7 @@ const LOOKS_BATCH_MS = 250;
 const LOOKS_TTL_MS = 10 * 60_000;
 /** The catalog is revalidated (ETag) this often as well as on events. */
 export const CATALOG_REFRESH_MS = 30 * 60_000;
-const PAINT_PROPS = ['background-image', 'background-clip', '-webkit-background-clip', 'color', 'filter', 'background-size', 'background-repeat'];
+const PAINT_PROPS = ['background-image', 'background-clip', '-webkit-background-clip', '-webkit-text-fill-color', 'color', 'filter', 'background-size', 'background-repeat'];
 
 /** When each message first reached us (0: it was already on the page at load); shared across Apps so a restart keeps the times. */
 const arrived = new WeakMap<Element, number>();
@@ -380,7 +380,13 @@ export class App {
       if (css.backgroundRepeat) name.style.setProperty('background-repeat', css.backgroundRepeat);
       name.style.setProperty('-webkit-background-clip', 'text');
       name.style.setProperty('background-clip', 'text');
-      name.style.color = 'transparent';
+      if (css.backgroundImage.startsWith('url(')) {
+        // A picture paint keeps its colour and hides the text with text-fill-color instead: its flat
+        // under-layer is drawn in currentColor (the paint's colour, else the chatter's own), so a
+        // picture that fails or has see-through parts leaves the name readable.
+        name.style.setProperty('-webkit-text-fill-color', 'transparent');
+        if (css.color) name.style.color = css.color;
+      } else name.style.color = 'transparent';
     } else if (css.color) name.style.color = css.color;
     if (css.filter) name.style.filter = css.filter;
     if (this.settings.tooltips) name.title = `${paint.name}\n${paint.source} paint`;
