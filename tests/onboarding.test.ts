@@ -2,7 +2,7 @@
 // The welcome page: the steps, skipping, what finishing writes, when it opens, and the theme.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CLEAN_TWITCH, ONBOARDING_KEY, ONBOARDING_VERSION, apply, back, initial, next, readProgress, shouldShow, skip } from '../src/onboarding/model';
-import { DEFAULTS, STORAGE_KEY, merge } from '../src/settings';
+import { DEFAULTS, STORAGE_KEY, compact, merge } from '../src/settings';
 import { THEME_MIRROR, applyTheme, readMirror, resolveTheme } from '../src/ui/theme';
 
 describe('steps', () => {
@@ -87,17 +87,38 @@ describe('theme', () => {
     applyTheme(document, 'dark');
     expect(document.documentElement.dataset.theme).toBeUndefined();
   });
-  it('reads the mirror, dark when unset or junk', () => {
-    expect(readMirror(document)).toBe('dark');
+  it('reads the mirror, system when unset or junk', () => {
+    expect(readMirror(document)).toBe('system');
     localStorage.setItem(THEME_MIRROR, 'light');
     expect(readMirror(document)).toBe('light');
-    localStorage.setItem(THEME_MIRROR, 'neon');
+    localStorage.setItem(THEME_MIRROR, 'dark');
     expect(readMirror(document)).toBe('dark');
+    localStorage.setItem(THEME_MIRROR, 'neon');
+    expect(readMirror(document)).toBe('system');
   });
   it('keeps the theme setting valid', () => {
-    expect(DEFAULTS.theme).toBe('dark');
-    expect(merge({ theme: 'system' }).theme).toBe('system');
-    expect(merge({ theme: 'pink' }).theme).toBe('dark');
+    expect(DEFAULTS.theme).toBe('system');
+    expect(merge({ theme: 'dark' }).theme).toBe('dark');
+    expect(merge({ theme: 'pink' }).theme).toBe('system');
+  });
+  it('never-touched users follow the system; an explicit dark choice is stored and kept', () => {
+    expect(merge(undefined).theme).toBe('system');
+    expect(merge({}).theme).toBe('system');
+    const chosen = compact({ ...DEFAULTS, theme: 'dark' });
+    expect(chosen.theme).toBe('dark');
+    expect(merge(chosen).theme).toBe('dark');
+    expect(compact(DEFAULTS).theme).toBeUndefined();
+  });
+  it('a light OS gets the light theme on first run, a dark OS the dark one', () => {
+    const mm = (light: boolean) => ({ matches: light }) as MediaQueryList;
+    const spy = vi.spyOn(window, 'matchMedia');
+    spy.mockReturnValue(mm(true));
+    applyTheme(document, DEFAULTS.theme);
+    expect(document.documentElement.dataset.theme).toBe('light');
+    spy.mockReturnValue(mm(false));
+    applyTheme(document, DEFAULTS.theme);
+    expect(document.documentElement.dataset.theme).toBeUndefined();
+    spy.mockRestore();
   });
 });
 
