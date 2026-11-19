@@ -13,7 +13,7 @@ import { CosmeticsLive } from '../live/cosmetics';
 import { isActive, placeMotion, setPaused } from '../chat/motion';
 import { EMOTE_CLASS, STYLES, type RenderOptions, renderEmotes } from '../chat/render';
 import { PROVIDERS } from '../providers';
-import { allowsPersonal, personal } from '../providers/cyextv';
+import { LOOKUP_MAX, allowsPersonal, personal } from '../providers/cyextv';
 import type { EmoteSet, FetchJson, ProviderId } from '../providers/types';
 import { FEATURES } from '../features/index';
 import { type Feature, type FeatureContext, type Other, shouldRun } from '../features/types';
@@ -546,18 +546,24 @@ export class App {
     const ids = [...this.personalQueue];
     this.personalQueue.clear();
     if (!ch || ids.length === 0) return;
-    let found: Map<string, EmoteSet>;
-    try {
-      found = await personal(this.deps.fetch, ch.platform, ids);
-    } catch {
-      return;
-    }
-    if (this.stopped) return;
-    for (const id of ids) this.index.setPersonal(id, found.has(id) ? [found.get(id)!] : []);
-    // Messages already shown from these chatters get their personal emotes too.
-    for (const id of found.keys()) {
-      // IDs are digits only (the page script checks), so they're safe in a selector.
-      if (/^\d+$/.test(id)) this.doc.querySelectorAll(`[data-cyextv-uid="${id}"]`).forEach((m) => this.process(m));
+    // The API takes 100 chatters a request; a busy chat queues more than that in one batch.
+    for (let i = 0; i < ids.length; i += LOOKUP_MAX) {
+      const batch = ids.slice(i, i + LOOKUP_MAX);
+      let found: Map<string, EmoteSet>;
+      try {
+        found = await personal(this.deps.fetch, ch.platform, batch);
+      } catch {
+        // Try these chatters again on their next message.
+        for (const id of batch) this.personalSeen.delete(id);
+        continue;
+      }
+      if (this.stopped || this.channel !== ch) return;
+      for (const id of batch) this.index.setPersonal(id, found.has(id) ? [found.get(id)!] : []);
+      // Messages already shown from these chatters get their personal emotes too.
+      for (const id of found.keys()) {
+        // IDs are digits only (the page script checks), so they're safe in a selector.
+        if (/^\d+$/.test(id)) this.doc.querySelectorAll(`[data-cyextv-uid="${id}"]`).forEach((m) => this.process(m));
+      }
     }
   }
 

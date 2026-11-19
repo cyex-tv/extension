@@ -164,6 +164,22 @@ describe('the app', () => {
     expect(document.querySelectorAll('.cyextv-emote')).toHaveLength(0);
   });
 
+  it('looks up the chatters of a busy chat 100 at a time, none left out', async () => {
+    const app = new App({ site: site({ id: '141981764', login: 'lumen_fox' }), fetch: apis.fetch, settings: settings(), sockets: null });
+    await app.loadGlobals();
+    await app.syncChannel();
+    await app.channelLoad;
+    const want = (app as unknown as { wantPersonal(id: string): void }).wantPersonal.bind(app);
+    const chatters = Array.from({ length: 250 }, (_, i) => String(5000 + i));
+    chatters.forEach(want);
+    const before = apis.calls.filter((c) => c.url.endsWith('/lookup')).length;
+    await app.flushPersonal();
+    const lookups = apis.calls.filter((c) => c.url.endsWith('/lookup')).slice(before);
+    const asked = lookups.map((c) => (c.body as { user_ids: string[] }).user_ids);
+    expect(asked.map((ids) => ids.length)).toEqual([100, 100, 50]);
+    expect(asked.flat().sort()).toEqual([...chatters].sort());
+  });
+
   it('looks up personal emotes for chatters in one batch and redraws their messages', async () => {
     vi.useFakeTimers();
     const app = new App({ site: site({ id: '141981764', login: 'lumen_fox' }), fetch: apis.fetch, settings: settings(), sockets: null });
