@@ -14,7 +14,7 @@ Node 22.12 or newer.
 
 ```
 npm ci
-npm run build        # dist/chrome and dist/firefox
+npm run build        # dist/chrome and dist/firefox, minified (no source maps; see docs/features.md)
 npm test
 npm run check        # TypeScript
 npm run licences     # the licence allow-list

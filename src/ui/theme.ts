@@ -39,8 +39,8 @@ export function useTheme(doc: Document, theme: Theme): void {
 export function readMirror(doc: Document): Theme {
   try {
     const v = doc.defaultView?.localStorage.getItem(THEME_MIRROR);
-    return v === 'light' || v === 'system' ? v : 'dark';
+    return v === 'light' || v === 'dark' ? v : 'system';
   } catch {
-    return 'dark';
+    return 'system';
   }
 }

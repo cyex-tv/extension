@@ -22,7 +22,7 @@ export const fetchJson: FetchJson = async (url, init) => {
 let app: App | null = null;
 
 let generation = 0;
-let theme: Theme = 'dark';
+let theme: Theme = 'system';
 
 async function start() {
   // Saved twice quickly: only the latest start may finish.

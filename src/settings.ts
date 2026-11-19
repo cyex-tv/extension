@@ -201,7 +201,7 @@ export const DEFAULTS: Settings = {
   disabledChannels: [],
   tooltips: true,
   overrideOthers: false,
-  theme: 'dark',
+  theme: 'system',
   chat: CHAT_DEFAULTS,
 };
 

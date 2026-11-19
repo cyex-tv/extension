@@ -9,7 +9,7 @@ import { HealthPanel } from './panel';
 export function startHealth(site: Site, theme: () => Theme, doc: Document = document): void {
   const panel = new HealthPanel({
     doc,
-    theme: 'dark',
+    theme: 'system',
     run: () => runHealth(site, doc, ext().runtime.getManifest().version, doc.location?.pathname ?? '/'),
   });
   ext().runtime.onMessage.addListener((message, sender) => {
