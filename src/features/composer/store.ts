@@ -57,6 +57,36 @@ export class Store {
     this.save();
   }
 
+  /**
+   * Replaces `cyextv:<old ULID>` keys with `cyextv:<Snowflake>` (map keys are upper-case ULIDs).
+   * Counts add up, favourites keep their place, and what another tab saved meanwhile is read
+   * first, so nothing is lost. Done again, it changes nothing.
+   */
+  async remapIds(map: ReadonlyMap<string, string>): Promise<void> {
+    if (map.size === 0) return;
+    if (this.local) {
+      try {
+        const v = await this.local.get([FAVORITES_KEY, USAGE_KEY]);
+        const fav = v[FAVORITES_KEY];
+        if (Array.isArray(fav)) this.favorites = [...new Set([...this.favorites, ...fav.filter((k): k is string => typeof k === 'string')])];
+        const use = v[USAGE_KEY];
+        if (use && typeof use === 'object') for (const [k, n] of Object.entries(use)) if (typeof n === 'number' && !(k in this.usage)) this.usage[k] = n;
+      } catch {
+        /* keep what is in memory */
+      }
+    }
+    const to = (key: string) => {
+      const m = key.match(/^cyextv:(.+)$/);
+      const id = m ? map.get(m[1]!.toUpperCase()) : undefined;
+      return id ? `cyextv:${id}` : key;
+    };
+    this.favorites = [...new Set(this.favorites.map(to))];
+    const usage: Record<string, number> = {};
+    for (const [k, n] of Object.entries(this.usage)) usage[to(k)] = (usage[to(k)] ?? 0) + n;
+    this.usage = usage;
+    if (this.local) await this.local.set({ [FAVORITES_KEY]: this.favorites, [USAGE_KEY]: this.usage });
+  }
+
   setTab(tab: string) {
     this.tab = tab;
     void this.local?.set({ [TAB_KEY]: tab }).catch(() => undefined);
