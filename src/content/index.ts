@@ -4,8 +4,10 @@
 import type { Answer, Request } from '../background/fetcher';
 import { ext } from '../ext';
 import type { FetchJson } from '../providers/types';
+import { storeFor } from '../features/composer/store';
 import { HIDDEN_EMOTES_KEY, hiddenEmotes } from '../features/cleanup/hide-emote';
 import { NOTES_KEY, notes } from '../features/people/notes';
+import { migrateEmoteIds } from '../migrate-ids';
 import { startHealth } from '../health/index';
 import { STORAGE_KEY, type Theme, load } from '../settings';
 import { kick } from '../sites/kick';
@@ -49,7 +51,20 @@ ext().storage.onChanged.addListener((changes, area) => {
 });
 
 void notes.load(ext().storage.local);
-void hiddenEmotes.load(ext().storage.local);
+const loadedHidden = hiddenEmotes.load(ext().storage.local);
+
+/** Emote IDs stored from before the Snowflakes (ADR 0027): moved once the API answers, retried while it doesn't. */
+const MIGRATE_RETRY_MS = 5 * 60_000;
+const MIGRATE_TRIES = 6;
+async function migrateIds(attempt = 1): Promise<void> {
+  const r = await (async () => {
+    const local = ext().storage.local;
+    await loadedHidden;
+    return migrateEmoteIds(local, fetchJson, storeFor(local), hiddenEmotes);
+  })().catch(() => null);
+  if ((!r || r.pending > 0) && attempt < MIGRATE_TRIES) setTimeout(() => void migrateIds(attempt + 1), MIGRATE_RETRY_MS * attempt);
+}
+void migrateIds();
 startHealth(location.hostname.endsWith('kick.com') ? kick : twitch, () => theme);
 
 start().catch((e) => console.warn('[cyex.tv]', e));
