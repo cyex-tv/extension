@@ -38,7 +38,8 @@ function layer(d: Record<string, unknown>): string | null {
   if (fn === 'URL') {
     const url = str(d.image_url);
     // Only 7TV's own CDN, over https.
-    if (url && /^(https:)?\/\/cdn\.7tv\.app\//.test(url)) return `url("${https(url).replace(/"/g, '')}")`;
+    const safe = url ? https(url) : '';
+    if (/^https:\/\/cdn\.7tv\.app\/[A-Za-z0-9/_.-]+$/.test(safe)) return `url("${safe}")`;
   }
   return null;
 }

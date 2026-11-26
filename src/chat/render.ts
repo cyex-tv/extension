@@ -3,6 +3,7 @@
 // the same message changes nothing the second time.
 import type { Animations } from '../settings';
 import type { Emote, EmoteImage } from '../providers/types';
+import { cdnUrl } from '../providers/cdn';
 import { placeMotion } from './motion';
 import { type Find, type Token, tokenize } from './tokenize';
 
@@ -20,7 +21,7 @@ export type RenderOptions = {
 
 function srcset(images: EmoteImage[]): string {
   const one = images[0]!;
-  return images.map((i) => `${i.url} ${i.scale === 1 ? 1 : Math.round((i.width / one.width) * 10) / 10}x`).join(', ');
+  return images.filter((i) => cdnUrl(i.url)).map((i) => `${i.url} ${i.scale === 1 ? 1 : Math.round((i.width / one.width) * 10) / 10}x`).join(', ');
 }
 
 /** The largest image, for the rich tooltip. */
@@ -42,7 +43,7 @@ function picture(doc: Document, emote: Emote, opts: RenderOptions, overlay: bool
   const still = emote.animated && opts.animations !== 'on' && emote.stills?.length ? emote.stills : null;
   const shown = still ?? emote.images;
   const one = shown[0]!;
-  img.src = one.url;
+  img.src = cdnUrl(one.url);
   img.srcset = srcset(shown);
   if (opts.pausable && opts.animations === 'on' && emote.animated && emote.stills?.length) {
     const first = emote.stills[0]!;

@@ -15,6 +15,7 @@ import {
   num,
   str,
 } from './types';
+import { cdnUrl } from './cdn';
 
 export const API = 'https://7tv.io/v3';
 const ZERO_WIDTH = 1;
@@ -32,7 +33,8 @@ function images(host: Record<string, unknown>, still: boolean): EmoteImage[] {
     if (!name || !m || !width || !height || Boolean(m[2]) !== still) continue;
     const scale = Number(m[1]);
     if (![1, 2, 3, 4].includes(scale)) continue;
-    out.push({ scale: scale as EmoteImage['scale'], url: `${https(base)}/${name}`, width, height });
+    const url = cdnUrl(`${https(base)}/${name}`);
+    if (url) out.push({ scale: scale as EmoteImage['scale'], url, width, height });
   }
   return out.sort((a, b) => a.scale - b.scale);
 }

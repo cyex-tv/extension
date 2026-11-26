@@ -3,6 +3,7 @@
 // applied with CSS keyed by the emote's provider and ID, so it works at once on every message on
 // screen and nothing is rewritten. A hidden emote shows as its name or as nothing (a setting).
 // Shift or Ctrl with the right button keeps the browser's own menu.
+import { EMOTE_CDN_HOSTS, cdnUrl } from '../../providers/cdn';
 import { EMOTE_CLASS } from '../../chat/render';
 import { DEFAULT_ORDER } from '../../providers';
 import type { ProviderId } from '../../providers/types';
@@ -16,19 +17,7 @@ export type HiddenEmote = { provider: ProviderId; id: string; name: string; /** 
 
 const ID = /^[\w-]{1,64}$/;
 
-/** Where the providers serve emote pictures. A picture from anywhere else (a hand-made backup) is dropped. */
-export const EMOTE_CDN_HOSTS = ['cdn.7tv.app', 'cdn.betterttv.net', 'cdn.frankerfacez.com', 'cdn.cyex.tv'];
-
-/** `url` when it is an https picture on a provider's CDN, else ''. */
-export function cdnUrl(url: unknown): string {
-  if (typeof url !== 'string' || url.length > 400) return '';
-  try {
-    const u = new URL(url);
-    return u.protocol === 'https:' && !u.username && !u.password && !u.port && EMOTE_CDN_HOSTS.includes(u.hostname) ? url : '';
-  } catch {
-    return '';
-  }
-}
+export { EMOTE_CDN_HOSTS, cdnUrl };
 export const emoteKey = (e: Pick<HiddenEmote, 'provider' | 'id'>) => `${e.provider}:${e.id}`;
 
 /** Stored entries, checked: known providers, plain IDs, pictures only from the providers' CDNs, capped, no duplicates. */

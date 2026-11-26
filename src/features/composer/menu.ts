@@ -1,6 +1,7 @@
 // The emote menu: a button by the message box and a panel with a search box, a tab per
 // provider, favourites and the most used emotes. Styled like cyex deck (dark, 3px corners).
 import type { Emote, EmoteImage, ProviderId } from '../../providers/types';
+import { cdnUrl } from '../../providers/cdn';
 import { PROVIDER_LABEL } from '../../popup/model';
 import type { Feature, FeatureContext } from '../types';
 import { type Saved, insertAtCaret, restoreCaret, saveCaret } from './editor';
@@ -51,7 +52,7 @@ function el<K extends keyof HTMLElementTagNameMap>(doc: Document, tag: K, cls: s
 
 function srcset(images: EmoteImage[]): string {
   const one = images[0]!;
-  return images.map((i) => `${i.url} ${i.scale === 1 ? 1 : Math.round((i.width / one.width) * 10) / 10}x`).join(', ');
+  return images.filter((i) => cdnUrl(i.url)).map((i) => `${i.url} ${i.scale === 1 ? 1 : Math.round((i.width / one.width) * 10) / 10}x`).join(', ');
 }
 
 export function emoteMenu(): Feature {
@@ -113,7 +114,7 @@ export function emoteMenu(): Feature {
     const still = e.animated && ctx!.settings.animations !== 'on' && e.stills?.length ? e.stills : null;
     const shown = still ?? e.images;
     const img = ctx!.doc.createElement('img');
-    img.src = shown[0]!.url;
+    img.src = cdnUrl(shown[0]!.url);
     img.srcset = srcset(shown);
     img.alt = e.name;
     img.loading = 'lazy';
