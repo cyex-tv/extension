@@ -111,14 +111,15 @@ describe('theme', () => {
   });
   it('a light OS gets the light theme on first run, a dark OS the dark one', () => {
     const mm = (light: boolean) => ({ matches: light }) as MediaQueryList;
-    const spy = vi.spyOn(window, 'matchMedia');
+    const spy = vi.fn<(q: string) => MediaQueryList>();
+    vi.stubGlobal('matchMedia', spy);
     spy.mockReturnValue(mm(true));
     applyTheme(document, DEFAULTS.theme);
     expect(document.documentElement.dataset.theme).toBe('light');
     spy.mockReturnValue(mm(false));
     applyTheme(document, DEFAULTS.theme);
     expect(document.documentElement.dataset.theme).toBeUndefined();
-    spy.mockRestore();
+    vi.unstubAllGlobals();
   });
 });
 
