@@ -6,8 +6,9 @@
 import { type FetchJson, arr, isObject, isPlatformId, num, str } from '../providers/types';
 import type { Platform } from '../providers/types';
 import type { Badge } from './badges';
+import { API_ORIGIN, onLocalApi } from '../env';
 
-export const COSMETICS_URL = 'https://api.cyex.tv/v1/cosmetics';
+export const COSMETICS_URL = `${API_ORIGIN}/v1/cosmetics`;
 /** Chatters per lookup (cyex.tv's limit). */
 export const USERS_MAX = 100;
 /** Hosts a picture may come from: the API and its CDN. */
@@ -62,6 +63,10 @@ export function imageUrl(host: unknown, name: unknown): string | null {
     u = new URL(host);
   } catch {
     return null;
+  }
+  // A local beta build also takes pictures from its local API (plain http, with a port).
+  if (onLocalApi(u) && !u.search && !u.hash && /^[A-Za-z0-9/_.-]*$/.test(u.pathname) && !u.pathname.includes('..')) {
+    return `${u.origin}${u.pathname.replace(/\/+$/, '')}/${name}`;
   }
   if (u.protocol !== 'https:' || u.port || u.username || u.password || u.search || u.hash) return null;
   if (!IMAGE_HOSTS.includes(u.hostname) || !/^[A-Za-z0-9/_.-]*$/.test(u.pathname) || u.pathname.includes('..')) return null;
@@ -233,7 +238,7 @@ export async function lookupUsers(fetch: FetchJson, platform: Platform, userIds:
   const out = new Map<string, Shown>();
   const ids = [...new Set(userIds.filter(isPlatformId))].slice(0, USERS_MAX);
   if (ids.length === 0) return out;
-  const found = await fetch(`https://api.cyex.tv/v1/cosmetics/users?platform=${platform}&ids=${ids.join(',')}`);
+  const found = await fetch(`${COSMETICS_URL}/users?platform=${platform}&ids=${ids.join(',')}`);
   if (!isObject(found)) return out;
   for (const u of arr(found.users)) {
     if (!isObject(u)) continue;

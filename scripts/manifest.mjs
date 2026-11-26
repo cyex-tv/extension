@@ -4,23 +4,30 @@
 const HOSTS = ['https://api.cyex.tv/*', 'https://7tv.io/*', 'https://api.betterttv.net/*', 'https://api.frankerfacez.com/*', 'https://api.cyex.app/badges/v1/*'];
 const SITES = ['https://www.twitch.tv/*', 'https://kick.com/*'];
 
-/** @param {'chrome' | 'firefox'} target @param {string} version */
-export function manifest(target, version) {
+/**
+ * @param {'chrome' | 'firefox'} target
+ * @param {string} version
+ * @param {{ beta?: boolean, api?: string }} [flavour] beta: the nightly ("cyex.tv beta", its own ID so it
+ *   installs next to the store build); api: a local beta's API origin, added to the host permissions.
+ */
+export function manifest(target, version, { beta = false, api = '' } = {}) {
+  const name = beta ? (api ? 'cyex.tv beta (local)' : 'cyex.tv beta') : 'cyex.tv';
+  const hosts = api ? [...HOSTS, `${new URL(api).protocol}//${new URL(api).hostname}/*`] : HOSTS;
   const base = {
     manifest_version: 3,
-    name: 'cyex.tv',
-    short_name: 'cyex.tv',
-    description: 'Emotes, badges and name paints from cyex.tv, 7TV, BTTV and FFZ in Twitch and Kick chat.',
+    name,
+    short_name: name,
+    description: `${beta ? 'Nightly beta. ' : ''}Emotes, badges and name paints from cyex.tv, 7TV, BTTV and FFZ in Twitch and Kick chat.`,
     version,
     // activeTab: the popup reads the open tab's address (to switch a channel off) after a click.
     permissions: ['storage', 'activeTab'],
-    host_permissions: HOSTS,
+    host_permissions: hosts,
     content_scripts: [
       // Reads the sites' React props (sender and channel IDs) into data attributes; see src/main.
       { matches: SITES, js: ['main.js'], run_at: 'document_idle', world: 'MAIN' },
       { matches: SITES, js: ['content.js'], run_at: 'document_idle' },
     ],
-    action: { default_title: 'cyex.tv', default_popup: 'popup.html', default_icon: { 16: 'icons/16.png', 32: 'icons/32.png', 48: 'icons/48.png' } },
+    action: { default_title: name, default_popup: 'popup.html', default_icon: { 16: 'icons/16.png', 32: 'icons/32.png', 48: 'icons/48.png' } },
     commands: { 'selector-check': { suggested_key: { default: 'Alt+Shift+H' }, description: 'Check which parts of the page the extension can find' } },
     options_ui: { page: 'options.html', open_in_tab: true },
     icons: { 16: 'icons/16.png', 32: 'icons/32.png', 48: 'icons/48.png', 128: 'icons/128.png' },
@@ -29,6 +36,6 @@ export function manifest(target, version) {
   return {
     ...base,
     background: { scripts: ['background.js'] },
-    browser_specific_settings: { gecko: { id: 'extension@cyex.tv', strict_min_version: '128.0' } },
+    browser_specific_settings: { gecko: { id: beta ? 'extension-beta@cyex.tv' : 'extension@cyex.tv', strict_min_version: '128.0' } },
   };
 }

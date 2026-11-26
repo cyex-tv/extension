@@ -3,6 +3,7 @@ import { cyextv } from './cyextv';
 import { ffz } from './ffz';
 import { seventv } from './seventv';
 import type { EmoteProvider, ProviderId } from './types';
+import { API_HOST } from '../env';
 
 export const PROVIDERS: Record<ProviderId, EmoteProvider> = { cyextv, '7tv': seventv, bttv, ffz };
 
@@ -10,6 +11,6 @@ export const PROVIDERS: Record<ProviderId, EmoteProvider> = { cyextv, '7tv': sev
 export const DEFAULT_ORDER: ProviderId[] = ['cyextv', '7tv', 'bttv', 'ffz'];
 
 /** The API hosts the background may fetch from, and nothing else. */
-export const API_HOSTS = ['api.cyex.tv', '7tv.io', 'api.betterttv.net', 'api.frankerfacez.com'];
+export const API_HOSTS = [API_HOST, '7tv.io', 'api.betterttv.net', 'api.frankerfacez.com'];
 
 export type { Emote, EmoteSet, EmoteProvider, ProviderId, Platform } from './types';

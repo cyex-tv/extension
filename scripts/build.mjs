@@ -3,6 +3,8 @@
 // JS and CSS are minified (readable source is this repo; see docs/store-review.md to reproduce).
 //   npm run build            both browsers
 //   npm run build -- chrome  one
+//   npm run build -- beta    the nightly beta ("cyex.tv beta", installs next to the store build) into dist/<browser>-beta
+//   CYEX_TV_API=http://localhost:8787 npm run build -- beta   a beta that talks to a local API or the website's mock
 import { copyFile, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -23,17 +25,25 @@ const ENTRIES = {
   theme: 'src/theme/index.ts',
 };
 const STATIC = ['src/popup/popup.html', 'src/popup/popup.css', 'src/options/options.html', 'src/options/options.css', 'src/onboarding/onboarding.html', 'src/onboarding/onboarding.css'];
-const targets = process.argv.slice(2).filter((t) => t === 'chrome' || t === 'firefox');
+const args = process.argv.slice(2);
+const targets = args.filter((t) => t === 'chrome' || t === 'firefox');
+const beta = args.includes('beta');
+const api = (process.env.CYEX_TV_API ?? '').replace(/\/+$/, '');
+if (api && !beta) throw new Error('CYEX_TV_API is only for beta builds: CYEX_TV_API=... npm run build -- beta');
+if (api && !/^(http:\/\/(localhost|127\.0\.0\.1)(:\d{1,5})?|https:\/\/[a-z0-9.-]+(:\d{1,5})?)$/.test(api)) {
+  throw new Error(`CYEX_TV_API must be http://localhost[:port], http://127.0.0.1[:port] or an https origin, not "${api}"`);
+}
+const version = beta ? `${pkg.version}.${buildNumber()}` : pkg.version;
 
 for (const target of targets.length ? targets : ['chrome', 'firefox']) {
-  const out = join(root, 'dist', target);
+  const out = join(root, 'dist', beta ? `${target}-beta` : target);
   await rm(out, { recursive: true, force: true });
   for (const [name, entry] of Object.entries(ENTRIES)) {
     await build({
       root,
       configFile: false,
       logLevel: 'warn',
-      define: { __TARGET__: JSON.stringify(target) },
+      define: { __TARGET__: JSON.stringify(target), __CYEXTV_API__: JSON.stringify(api) },
       build: {
         outDir: out,
         emptyOutDir: false,
@@ -44,7 +54,7 @@ for (const target of targets.length ? targets : ['chrome', 'firefox']) {
       },
     });
   }
-  await writeFile(join(out, 'manifest.json'), `${JSON.stringify(manifest(target, pkg.version), null, 2)}\n`);
+  await writeFile(join(out, 'manifest.json'), `${JSON.stringify(manifest(target, version, { beta, api }), null, 2)}\n`);
   await mkdir(join(out, 'icons'), { recursive: true });
   for (const [size, png] of Object.entries(icons())) await writeFile(join(out, 'icons', `${size}.png`), png);
   for (const file of STATIC) {
@@ -57,7 +67,14 @@ for (const target of targets.length ? targets : ['chrome', 'firefox']) {
   const licence = join(root, 'LICENSE');
   if (existsSync(licence)) await copyFile(licence, join(out, 'LICENSE'));
   await verify(out);
-  console.log(`built dist/${target}`);
+  console.log(`built dist/${beta ? `${target}-beta` : target} (${version}${api ? `, API ${api}` : ''})`);
+}
+
+/** The beta's fourth version part: CYEX_TV_BUILD_NUMBER, else days since 2026/01/01 (one nightly a day). */
+function buildNumber() {
+  const set = Number(process.env.CYEX_TV_BUILD_NUMBER);
+  if (Number.isInteger(set) && set >= 0 && set <= 65535) return set;
+  return Math.floor((Date.now() - Date.UTC(2026, 0, 1)) / 86_400_000);
 }
 
 /** Fails the build if the output needs a looser CSP or ships a source map. */

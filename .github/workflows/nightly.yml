@@ -1,0 +1,38 @@
+name: Nightly beta
+
+# Builds "cyex.tv beta" from main every night (and on demand) for Chrome and Firefox. The zips are
+# kept as workflow artifacts for 14 days; nothing is published to a store or a release.
+on:
+  schedule:
+    - cron: '0 3 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  beta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
+      - name: Build the beta for Chrome and Firefox
+        run: npm run build:beta
+      - name: Zip
+        run: |
+          version=$(node -p "require('./dist/chrome-beta/manifest.json').version")
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+          (cd dist/chrome-beta && zip -qr "../cyex-tv-beta-chrome-$version.zip" .)
+          (cd dist/firefox-beta && zip -qr "../cyex-tv-beta-firefox-$version.zip" .)
+      - uses: actions/upload-artifact@v7
+        with:
+          name: cyex-tv-beta-${{ env.VERSION }}
+          path: dist/*.zip
+          retention-days: 14

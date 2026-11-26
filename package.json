@@ -7,6 +7,7 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
+    "build:beta": "node scripts/build.mjs beta",
     "check": "tsc --noEmit",
     "test": "vitest run",
     "licences": "node scripts/licences.mjs"

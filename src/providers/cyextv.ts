@@ -17,8 +17,9 @@ import {
   str,
 } from './types';
 import { cdnUrl } from './cdn';
+import { API_ORIGIN, LOCAL_API } from '../env';
 
-export const API = 'https://api.cyex.tv/v1';
+export const API = `${API_ORIGIN}/v1`;
 /** Chatters per personal-set lookup (cyex.tv's limit). */
 export const LOOKUP_MAX = 100;
 
@@ -32,7 +33,7 @@ function images(host: string, files: unknown[], still: boolean): EmoteImage[] {
     const isStatic = f.is_static === true || f.isStatic === true;
     const scale = num(f.scale) ?? Number(name?.match(/^(\d)x/)?.[1]);
     if (!name || !width || !height || isStatic !== still || ![1, 2, 3, 4].includes(scale)) continue;
-    const url = cdnUrl(`${https(host)}/${name}`);
+    const url = cdnUrl(`${LOCAL_API && host.startsWith(`${API_ORIGIN}/`) ? host : https(host)}/${name}`);
     if (url) out.push({ scale: scale as EmoteImage['scale'], url, width, height });
   }
   return out.sort((a, b) => a.scale - b.scale);
