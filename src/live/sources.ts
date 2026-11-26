@@ -10,8 +10,9 @@
 import type { SeventvCosmetics } from '../cosmetics/seventv';
 import type { Platform } from '../providers/types';
 import { type Handlers, LiveSocket, type SocketFactory } from './socket';
+import { API_ORIGIN } from '../env';
 
-export const CYEXTV_EVENTS = 'wss://api.cyex.tv/v1/events';
+export const CYEXTV_EVENTS = `${API_ORIGIN.replace(/^http/, 'ws')}/v1/events`;
 export const SEVENTV_EVENTS = 'wss://events.7tv.io/v3';
 
 /** A missed heartbeat or three means the connection is gone (ADR 0005); 7TV's the same. */

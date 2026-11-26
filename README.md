@@ -22,6 +22,12 @@ npm run licences     # the licence allow-list
 
 Load `dist/chrome` with "Load unpacked" on `chrome://extensions` (developer mode), or `dist/firefox/manifest.json` from `about:debugging` → "Load Temporary Add-on".
 
+### Stable and nightly beta
+
+- **Stable** (`npm run build`): the store build, named "cyex.tv", talking to api.cyex.tv.
+- **Nightly beta** (`npm run build:beta`, into `dist/chrome-beta` and `dist/firefox-beta`): named "cyex.tv beta" with its own Firefox ID, so it installs next to the stable one. Its version gets a fourth part, the build number (days since 2026/01/01, or `CYEX_TV_BUILD_NUMBER`). The "Nightly beta" workflow builds it from `main` every night and keeps the zips as workflow artifacts for 14 days; nothing is published.
+- **Local beta**: `CYEX_TV_API=http://localhost:8787 npm run build:beta` builds "cyex.tv beta (local)", which reads cyex.tv emotes, badges and paints from a local API or the website's mock API (`apps/web/dev/mock-api.mjs` in the platform repo) instead of api.cyex.tv. Only `http://localhost`, `http://127.0.0.1` (any port) or an https origin is accepted, and only for beta builds; the stable build never accepts a local address. The mock has no live events socket, so live updates don't arrive in a local beta.
+
 ## Layout
 
 - `src/providers/`: one module per emote provider, public APIs only (cyex.tv, 7TV v3, BTTV v3, FFZ v1).

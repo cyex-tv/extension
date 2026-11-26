@@ -3,6 +3,7 @@
 // allowed, only over https. Answers are kept for a while and revalidated with `If-None-Match`,
 // so a busy chat doesn't hit the APIs again for every channel switch.
 import { API_HOSTS } from '../providers';
+import { onLocalApi } from '../env';
 
 /** `fresh`: ask the API again now (revalidating with the ETag) instead of using a fresh-enough answer. */
 export type Request = { url: string; method?: 'GET' | 'POST'; body?: unknown; fresh?: boolean };
@@ -19,6 +20,7 @@ export const FETCH_TIMEOUT_MS = 5000;
 export function allowed(raw: string): boolean {
   try {
     const url = new URL(raw);
+    if (onLocalApi(url)) return true;
     if (url.protocol !== 'https:' || url.username || url.password) return false;
     // cyex.app: only its public badge API (AGENTS.md: the one contact with cyex.app).
     if (url.hostname === 'api.cyex.app') return url.pathname.startsWith('/badges/v1/');
