@@ -76,7 +76,9 @@ export const twitch: Site = {
     return message.querySelector('[data-a-target="chat-line-message-body"]');
   },
   sender(message) {
-    return message.getAttribute('data-cyextv-uid');
+    // The page can write this attribute: only a numeric platform ID counts.
+    const id = message.getAttribute('data-cyextv-uid');
+    return id && CHANNEL_ID.test(id) ? id : null;
   },
   login(message) {
     return (message.getAttribute('data-a-user') ?? message.querySelector('.chat-author__display-name')?.getAttribute('data-a-user'))?.toLowerCase() ?? null;
@@ -110,7 +112,7 @@ export const twitch: Site = {
     return message.querySelector('[data-a-target="chat-deleted-message-placeholder"], .chat-line__message--deleted-notice');
   },
   isFirst(message) {
-    return message.hasAttribute('data-cyextv-first');
+    return message.getAttribute('data-cyextv-first') === '';
   },
   hide: TWITCH_HIDE_SELECTORS,
   claimButton(doc) {

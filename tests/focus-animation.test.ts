@@ -11,8 +11,8 @@ import { PAGES } from '../src/options/schema';
 import { twitch } from '../src/sites/twitch';
 import { table } from './fixtures';
 
-const MOVING = 'https://cdn.example/dance/1x.webp';
-const STILL = 'https://cdn.example/dance/1x_static.webp';
+const MOVING = 'https://cdn.7tv.app/dance/1x.webp';
+const STILL = 'https://cdn.7tv.app/dance/1x_static.webp';
 const dance: Emote = {
   provider: '7tv',
   id: 'dance',
@@ -21,11 +21,11 @@ const dance: Emote = {
   animated: true,
   images: [
     { scale: 1, url: MOVING, width: 32, height: 32 },
-    { scale: 2, url: 'https://cdn.example/dance/2x.webp', width: 64, height: 64 },
+    { scale: 2, url: 'https://cdn.7tv.app/dance/2x.webp', width: 64, height: 64 },
   ],
   stills: [
     { scale: 1, url: STILL, width: 32, height: 32 },
-    { scale: 2, url: 'https://cdn.example/dance/2x_static.webp', width: 64, height: 64 },
+    { scale: 2, url: 'https://cdn.7tv.app/dance/2x_static.webp', width: 64, height: 64 },
   ],
 };
 const plain: Emote = { ...dance, id: 'plain', name: 'plain', animated: false, stills: undefined };
@@ -190,22 +190,22 @@ describe('the app follows the window', () => {
     document.body.innerHTML = LINE('111');
     const app = new App({ site: twitch, fetch: table({}).fetch, settings: settings({ animateOnlyFocused: true }), sockets: null });
     // A badge with a still, and a paint with a still, for chatter 111.
-    const U = (n: string, f: string) => [`https://cdn.example/${n}/1x${f}.webp`, `https://cdn.example/${n}/2x${f}.webp`, `https://cdn.example/${n}/4x${f}.webp`] as [string, string, string];
+    const U = (n: string, f: string) => [`https://cdn.7tv.app/${n}/1x${f}.webp`, `https://cdn.7tv.app/${n}/2x${f}.webp`, `https://cdn.7tv.app/${n}/4x${f}.webp`] as [string, string, string];
     app.start();
     (app as unknown as { cyexLooks: unknown }).cyexLooks = {
       badgeOf: () => ({ provider: 'cyextv', id: 'b', title: 'Badge', urls: U('b', ''), stills: U('b', '_s') }),
-      paintOf: () => ({ id: 'p', name: 'Paint', kind: 'image', image: { url: 'https://cdn.example/p/moving.webp', still: 'https://cdn.example/p/still.webp' }, shadows: [], stops: [], repeat: false }),
+      paintOf: () => ({ id: 'p', name: 'Paint', kind: 'image', image: { url: 'https://cdn.7tv.app/p/moving.webp', still: 'https://cdn.7tv.app/p/still.webp' }, shadows: [], stops: [], repeat: false }),
     };
     app.process(document.querySelector('[data-a-target="chat-line-message"]')!);
     const badge = document.querySelector<HTMLImageElement>('.cyextv-badges img')!;
     const name = document.querySelector<HTMLElement>('.chat-author__display-name')!;
-    expect(badge.getAttribute('src')).toBe('https://cdn.example/b/1x.webp');
+    expect(badge.getAttribute('src')).toBe('https://cdn.7tv.app/b/1x.webp');
     expect(name.style.backgroundImage).toContain('moving.webp');
     focusTo(false);
-    expect(badge.getAttribute('src')).toBe('https://cdn.example/b/1x_s.webp');
+    expect(badge.getAttribute('src')).toBe('https://cdn.7tv.app/b/1x_s.webp');
     expect(name.style.backgroundImage).toContain('still.webp');
     focusTo(true);
-    expect(badge.getAttribute('src')).toBe('https://cdn.example/b/1x.webp');
+    expect(badge.getAttribute('src')).toBe('https://cdn.7tv.app/b/1x.webp');
     expect(name.style.backgroundImage).toContain('moving.webp');
     app.stop();
   });

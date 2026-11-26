@@ -21,7 +21,7 @@ const emote = (name: string, provider: ProviderId = '7tv', extra: Partial<Emote>
   name,
   zeroWidth: false,
   animated: false,
-  images: [{ scale: 1, url: `https://cdn.example/${name}/1x.webp`, width: 32, height: 32 }],
+  images: [{ scale: 1, url: `https://cdn.7tv.app/${name}/1x.webp`, width: 32, height: 32 }],
   ...extra,
 });
 const em = (name: string, provider?: ProviderId): Cand => ({ name, kind: 'emote', provider });
@@ -209,7 +209,7 @@ const SETS: EmoteSet[] = [
     emotes: [
       emote('catJAM'),
       emote('peepoHappy'),
-      emote('Kappa', '7tv', { animated: true, stills: [{ scale: 1, url: 'https://cdn.example/Kappa/still.webp', width: 32, height: 32 }] }),
+      emote('Kappa', '7tv', { animated: true, stills: [{ scale: 1, url: 'https://cdn.7tv.app/Kappa/still.webp', width: 32, height: 32 }] }),
     ],
   },
   { provider: 'bttv', scope: 'global', emotes: [emote('KappaPride', 'bttv'), emote('monkaS', 'bttv')] },

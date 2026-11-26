@@ -2,6 +2,7 @@
 // Kick emotes. Modifier emotes (flip, grow, hidden...) change the emote before them; they're
 // kept with their `modifier_flags` and marked zero-width so they never take space of their own.
 import { type Emote, type EmoteImage, type EmoteProvider, type EmoteSet, type FetchJson, type Platform, ShapeError, arr, https, isObject, isPlatformId, num, str } from './types';
+import { cdnUrl } from './cdn';
 
 export const API = 'https://api.frankerfacez.com/v1';
 
@@ -11,7 +12,8 @@ function images(urls: unknown, width: number, height: number): EmoteImage[] {
   for (const [key, url] of Object.entries(urls)) {
     const scale = Number(key);
     if (typeof url !== 'string' || ![1, 2, 4].includes(scale)) continue;
-    out.push({ scale: scale as EmoteImage['scale'], url: https(url), width: width * scale, height: height * scale });
+    const safe = cdnUrl(https(url));
+    if (safe) out.push({ scale: scale as EmoteImage['scale'], url: safe, width: width * scale, height: height * scale });
   }
   return out.sort((a, b) => a.scale - b.scale);
 }

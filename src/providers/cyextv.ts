@@ -16,6 +16,7 @@ import {
   num,
   str,
 } from './types';
+import { cdnUrl } from './cdn';
 
 export const API = 'https://api.cyex.tv/v1';
 /** Chatters per personal-set lookup (cyex.tv's limit). */
@@ -31,7 +32,8 @@ function images(host: string, files: unknown[], still: boolean): EmoteImage[] {
     const isStatic = f.is_static === true || f.isStatic === true;
     const scale = num(f.scale) ?? Number(name?.match(/^(\d)x/)?.[1]);
     if (!name || !width || !height || isStatic !== still || ![1, 2, 3, 4].includes(scale)) continue;
-    out.push({ scale: scale as EmoteImage['scale'], url: `${https(host)}/${name}`, width, height });
+    const url = cdnUrl(`${https(host)}/${name}`);
+    if (url) out.push({ scale: scale as EmoteImage['scale'], url, width, height });
   }
   return out.sort((a, b) => a.scale - b.scale);
 }

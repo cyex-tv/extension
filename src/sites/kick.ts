@@ -59,7 +59,9 @@ export const kick: Site = {
     return separator.nextElementSibling ?? separator.parentElement?.nextElementSibling ?? null;
   },
   sender(message) {
-    return message.getAttribute('data-cyextv-uid');
+    // The page can write this attribute: only a numeric platform ID counts.
+    const id = message.getAttribute('data-cyextv-uid');
+    return id && CHANNEL_ID.test(id) ? id : null;
   },
   login(message) {
     return message.querySelector('button[title]')?.getAttribute('title')?.toLowerCase() ?? null;
@@ -106,7 +108,7 @@ export const kick: Site = {
     return message.querySelector('[data-cyextv-deleted], .line-through');
   },
   isFirst(message) {
-    return message.hasAttribute('data-cyextv-first');
+    return message.getAttribute('data-cyextv-first') === '';
   },
   hide: KICK_HIDE_SELECTORS,
   claimButton() {
